@@ -1,0 +1,31 @@
+{
+  "skillOverrides": {
+    "brandkit": "off",
+    "design-taste-frontend-v1": "off",
+    "emil-design-eng": "off",
+    "full-output-enforcement": "off",
+    "gpt-taste": "off",
+    "high-end-visual-design": "off",
+    "image-to-code": "off",
+    "imagegen-frontend-mobile": "off",
+    "imagegen-frontend-web": "off",
+    "industrial-brutalist-ui": "off",
+    "minimalist-ui": "off",
+    "redesign-existing-projects": "off",
+    "stitch-design-taste": "off",
+    "anthropic-skills:consolidate-memory": "off",
+    "anthropic-skills:docx": "off",
+    "anthropic-skills:pptx": "off",
+    "anthropic-skills:schedule": "off",
+    "anthropic-skills:setup-cowork": "off",
+    "anthropic-skills:xlsx": "off",
+    "simplify": "off",
+    "fewer-permission-prompts": "off",
+    "loop": "off",
+    "schedule": "off",
+    "init": "off",
+    "review": "off",
+    "security-review": "off",
+    "keybindings-help": "off"
+  }
+}

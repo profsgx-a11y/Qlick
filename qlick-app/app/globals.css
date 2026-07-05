@@ -1,0 +1,374 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────────────────────
+   Qlick — Premium Dark Theme tokens
+   Black & gold aesthetic, inspired by the Barber House poster.
+   Display font: Sofia Sans (headings) · Inter (body/UI).
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Tell browsers (Chrome/Brave/Edge auto-dark-mode) the site is already dark
+     → they skip "force dark" recoloring, which otherwise mangles the QR poster
+     SVG (dark schedule-table image over a darkened background = invisible text). */
+  color-scheme: dark;
+
+  /* Surfaces */
+  --background: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #181818;
+  --surface-3: #1f1f1f;
+
+  /* Foregrounds */
+  --foreground: #f5f5f4;
+  --muted: #a3a3a3;
+  --muted-2: #737373;
+
+  /* Borders */
+  --border: #262626;
+  --border-strong: #3f3f3f;
+
+  /* Brand — refined gold */
+  --gold: #d4a857;
+  --gold-bright: #e6c068;
+  --gold-dim: #a8853f;
+  --gold-glow: rgba(212, 168, 87, 0.18);
+
+  /* Semantic */
+  --success: #4ade80;
+  --warning: #facc15;
+  --danger: #ef4444;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* Motion — strong custom curves (Emil Kowalski). The built-in CSS easings
+     are too weak; these give animations intentional "punch". */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Elevation — soft, layered depth with a top inset highlight and a faint
+     hairline ring, instead of one harsh black drop shadow. The 0 0 0 1px layer
+     acts as the card's edge so it reads like machined hardware. */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px color-mix(in srgb, var(--gold) 12%, transparent),
+    0 18px 44px -22px rgba(0, 0, 0, 0.85);
+  --shadow-card-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px color-mix(in srgb, var(--gold) 30%, transparent),
+    0 26px 56px -22px rgba(0, 0, 0, 0.92);
+
+  /* Gold-edged elevation — a permanent hairline gold "frame" around hero cards
+     that intensifies (brighter edge + outer gold halo) on hover. */
+  --shadow-card-gold:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px color-mix(in srgb, var(--gold) 34%, transparent),
+    0 18px 44px -22px rgba(0, 0, 0, 0.85);
+  --shadow-card-gold-hover:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 0 0 1px color-mix(in srgb, var(--gold) 65%, transparent),
+    0 0 30px -6px var(--gold-glow),
+    0 28px 60px -20px rgba(0, 0, 0, 0.95);
+
+  /* Soft gold "lift" glow for hovered nav rows / compact interactive elements. */
+  --glow-nav: 0 4px 24px -6px color-mix(in srgb, var(--gold) 38%, transparent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-dim: var(--gold-dim);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sofia), var(--font-inter), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: var(--radius-sm);
+  --radius: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
+
+* {
+  border-color: var(--border);
+  /* Themed scrollbars — Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* Themed scrollbars — WebKit/Chromium/Safari (app-wide: page, modals, dropdowns).
+   Thin, rounded "pill" thumb in our palette, gold on hover; transparent track. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--gold-dim);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Hide the native number-input spinner (the white OS box that clashes with the
+   dark theme). Themed up/down arrows are provided by the NumberField component
+   where stepping is useful. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Snappier taps on iOS/Safari: skip the 300ms double-tap-zoom wait and the
+   grey tap highlight on our interactive elements. */
+button,
+a,
+[role="button"],
+label,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: var(--gold-glow);
+  color: var(--gold-bright);
+}
+
+/* Subtle gold radial glow used in hero sections */
+.bg-gold-glow {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%, var(--gold-glow), transparent 70%),
+    linear-gradient(180deg, var(--background) 0%, var(--background) 100%);
+}
+
+/* Hairline gold border utility */
+.border-gold-soft {
+  border-color: color-mix(in srgb, var(--gold) 35%, transparent);
+}
+
+/* Decorative gold underline (used under section labels) */
+.gold-underline::after {
+  content: "";
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--gold);
+  margin-top: 6px;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Premium surfaces & motion primitives
+   ────────────────────────────────────────────────────────────── */
+
+/* Top-lit surface for elevated "tray" shells — a subtle vertical gradient
+   that catches light at the top edge, so cards read as physical objects. */
+.surface-raise {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+
+/* Dashboard ambient backdrop — deep black with a faint gold glow at the top
+   and a soft vignette, for premium depth. Fixed (non-scrolling) on the shell. */
+.bg-dashboard {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      58% 42% at 50% -4%,
+      color-mix(in srgb, var(--gold) 8%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(100% 80% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+/* Layered elevation (see --shadow-card). Use on standalone cards. */
+.elev-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Soft gold-tinted header band (calendar day/staff headers). Opaque — so sticky
+   headers still hide content scrolling beneath — but warm, so each day/column
+   reads as its own framed card. */
+.bg-cal-header {
+  background-color: color-mix(in srgb, var(--gold) 10%, var(--background));
+}
+
+/* Decorative gold radial glow — fade it in on hover behind a card. */
+.glow-gold {
+  background: radial-gradient(
+    120% 120% at 50% -10%,
+    var(--gold-glow),
+    transparent 60%
+  );
+}
+
+/* Gentle blurred rise — for content entering on first paint. Runs once;
+   pair with an inline animation-delay to stagger siblings (30–90ms apart). */
+@keyframes qlick-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+.animate-rise {
+  /* `backwards` (not `both`): the entrance holds the "from" state during any
+     stagger delay, but does NOT retain a forwards transform afterwards — so a
+     later hover-lift on the same element isn't locked out by the animation. */
+  animation: qlick-rise 0.6s var(--ease-out) backwards;
+}
+
+/* Popover entrance — quick scale + fade. Set transform-origin per element so it
+   grows from its trigger (Emil: popovers should be origin-aware). */
+@keyframes qlick-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-pop {
+  animation: qlick-pop 0.16s var(--ease-out) both;
+}
+
+/* View swap — the incoming week/month grid slides in from the side. `backwards`
+   fill leaves no retained transform, so it can't create a containing block that
+   would break the grid's sticky headers afterwards. */
+@keyframes qlick-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-view {
+  animation: qlick-slide-in 0.3s var(--ease-out) backwards;
+}
+
+/* Date label step — slides in from the direction of travel (◀ prev / ▶ next). */
+@keyframes qlick-date-next {
+  from {
+    opacity: 0;
+    transform: translateX(40%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes qlick-date-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-40%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-date-next {
+  animation: qlick-date-next 0.5s var(--ease-out) backwards;
+}
+.animate-date-prev {
+  animation: qlick-date-prev 0.5s var(--ease-out) backwards;
+}
+
+/* Endless horizontal marquee — content is rendered twice, track slides by 50%.
+   Pause on hover so chips stay readable. */
+@keyframes qlick-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: qlick-marquee var(--marquee-duration, 42s) linear infinite;
+}
+.animate-marquee-reverse {
+  animation-direction: reverse;
+}
+.marquee-group:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+/* Faint blueprint grid behind the hero, fading out towards the edges. */
+.bg-hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 0%, black 25%, transparent 78%);
+}
+
+/* Reduced motion: keep things calm — no movement/blur, content just appears. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pop,
+  .animate-view,
+  .animate-date-next,
+  .animate-date-prev,
+  .animate-marquee {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}
