@@ -449,6 +449,8 @@
     "payAtShop": "Payment is made at the shop.",
     "name": "Name",
     "phoneOptional": "Phone (optional)",
+    "phone": "Phone",
+    "phoneRequired": "Phone number is required",
     "invalidPhone": "Invalid phone number",
     "noteOptional": "Note (optional)",
     "notePlaceholder": "e.g. something the shop should know",
