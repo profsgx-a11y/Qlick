@@ -23,7 +23,7 @@ export function SocialAuthButtons({
   locale,
   next,
   labels,
-  providers = ["google", "facebook"],
+  providers = ["google"],
 }: SocialAuthButtonsProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

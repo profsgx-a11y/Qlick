@@ -128,9 +128,10 @@ export function BookingFlow({
     setCur((c) => (c.m === 12 ? { y: c.y + 1, m: 1 } : { y: c.y, m: c.m + 1 }));
 
   const service = services.find((s) => s.id === serviceId);
-  // A bare country code ("+30") counts as "no phone entered" (field optional).
+  // A bare country code ("+30") counts as "no phone entered". Phone is required
+  // for a booking, so a valid number must be present to submit.
   const hasPhone = phone.replace(/\D/g, "").length > 4;
-  const phoneValid = !hasPhone || isValidPhone(phone);
+  const phoneValid = hasPhone && isValidPhone(phone);
 
   // Fetch slots whenever we're on the datetime step (and date/staff change).
   useEffect(() => {
@@ -609,11 +610,14 @@ export function BookingFlow({
               />
             </Field>
             <Field
-              label={t.phoneOptional}
+              label={t.phone}
               htmlFor="bk-phone"
+              required
               error={
-                phoneTouched && hasPhone && !phoneValid
-                  ? t.invalidPhone
+                phoneTouched && !phoneValid
+                  ? hasPhone
+                    ? t.invalidPhone
+                    : t.phoneRequired
                   : undefined
               }
             >
@@ -623,7 +627,7 @@ export function BookingFlow({
                   value={phone}
                   onChange={setPhone}
                   disabled={isPending}
-                  invalid={phoneTouched && hasPhone && !phoneValid}
+                  invalid={phoneTouched && !phoneValid}
                 />
               </div>
             </Field>
