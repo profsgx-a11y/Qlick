@@ -40,7 +40,7 @@ export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
       ref={rootRef}
       className="relative mx-auto w-[300px] rounded-[44px] border border-border-strong bg-surface p-2.5 shadow-2xl shadow-black/70 ring-1 ring-white/5 sm:w-[320px]"
     >
-      <div className="relative h-[496px] overflow-hidden rounded-[34px] bg-background sm:h-[528px]">
+      <div className="relative h-[458px] overflow-hidden rounded-[34px] bg-background sm:h-[490px]">
         {FRAMES.map((src, idx) => (
           <motion.img
             // eslint-disable-next-line @next/next/no-img-element
