@@ -56,6 +56,12 @@ export async function generateMetadata({
       title: dict.meta.title,
       description: dict.meta.description,
       type: "website",
+      siteName: "Qlick",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: dict.meta.title,
+      description: dict.meta.description,
     },
   };
 }
