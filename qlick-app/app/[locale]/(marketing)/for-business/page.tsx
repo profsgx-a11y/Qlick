@@ -172,7 +172,7 @@ export default async function ForBusinessPage({
         <div className="bg-hero-grid pointer-events-none absolute inset-0" />
         <Container size="xl" className="relative">
           <div className="grid items-center gap-14 lg:grid-cols-12 lg:gap-10">
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-6">
               <Reveal y={20}>
                 <span className="inline-flex items-center rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-xs font-semibold text-gold [box-shadow:var(--glow-nav)]">
                   {dict.nav.forBusiness}
@@ -207,7 +207,7 @@ export default async function ForBusinessPage({
               </Reveal>
             </div>
 
-            <div className="flex justify-center lg:col-span-5 lg:justify-end lg:pr-6">
+            <div className="flex justify-center lg:col-span-6 lg:justify-end lg:pr-6">
               <CalendarVisual toast={dict.hero.toasts[0]} />
             </div>
           </div>
