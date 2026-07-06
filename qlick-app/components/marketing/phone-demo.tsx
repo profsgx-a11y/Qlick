@@ -19,9 +19,10 @@ export interface PhoneDemoStrings {
  * (shop → service → day & time → staff → confirm → booked), cross-fading so
  * visitors see the genuine product rather than a stylised mock.
  */
-const FRAMES = ["/1.jpg", "/2.jpg", "/3.jpg"];
-// shop → pick day & time → confirm. Linger a touch on the confirmation.
-const DELAYS = [2600, 2600, 3200];
+const FRAMES = ["/1.png", "/2.png", "/3.png", "/4.png", "/5.png", "/6.png"];
+// shop → services → day & time → staff → confirm → booked.
+// Linger a touch on the final confirmation screen.
+const DELAYS = [2600, 2400, 2600, 2400, 2600, 3400];
 
 export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
   const reduce = useReducedMotion();

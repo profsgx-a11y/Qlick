@@ -390,11 +390,12 @@ export default async function LandingPage({
 
         <div className="mt-12 space-y-4">
           <Marquee duration={46}>
-            {dict.industries.items.slice(0, 6).map((item, i) => {
+            {Array.from({ length: 3 }).flatMap((_, rep) =>
+              dict.industries.items.slice(0, 6).map((item, i) => {
               const Icon = industryIcons[i] ?? Sparkles;
               return (
                 <span
-                  key={item.title}
+                  key={`${item.title}-${rep}`}
                   className="inline-flex items-center gap-3 rounded-full border border-border bg-surface py-3 pl-4 pr-6"
                 >
                   <span className="grid size-8 place-items-center rounded-full border border-gold/30 bg-gold/10 text-gold">
@@ -405,14 +406,16 @@ export default async function LandingPage({
                   </span>
                 </span>
               );
-            })}
+              }),
+            )}
           </Marquee>
           <Marquee duration={52} reverse>
-            {dict.industries.items.slice(6).map((item, i) => {
+            {Array.from({ length: 3 }).flatMap((_, rep) =>
+              dict.industries.items.slice(6).map((item, i) => {
               const Icon = industryIcons[i + 6] ?? Sparkles;
               return (
                 <span
-                  key={item.title}
+                  key={`${item.title}-${rep}`}
                   className="inline-flex items-center gap-3 rounded-full border border-border bg-surface py-3 pl-4 pr-6"
                 >
                   <span className="grid size-8 place-items-center rounded-full border border-gold/30 bg-gold/10 text-gold">
@@ -423,7 +426,8 @@ export default async function LandingPage({
                   </span>
                 </span>
               );
-            })}
+              }),
+            )}
           </Marquee>
         </div>
 
