@@ -4,18 +4,12 @@ import { createServerClient } from "@supabase/ssr";
 import { locales, defaultLocale, hasLocale } from "./i18n/config";
 
 function detectLocale(request: NextRequest): string {
+  // A remembered choice (set by the language switcher) always wins. Otherwise
+  // default to Greek — the primary market — regardless of browser language.
+  // English visitors can switch via the header toggle, which is then remembered.
   const cookie = request.cookies.get("NEXT_LOCALE")?.value;
   if (cookie && hasLocale(cookie)) return cookie;
 
-  const accept = request.headers.get("accept-language") ?? "";
-  const preferred = accept
-    .split(",")
-    .map((part) => part.split(";")[0].trim().toLowerCase())
-    .map((tag) => tag.split("-")[0]);
-
-  for (const tag of preferred) {
-    if (hasLocale(tag)) return tag;
-  }
   return defaultLocale;
 }
 
