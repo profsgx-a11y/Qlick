@@ -51,11 +51,15 @@ export async function createCustomerAccount(
   }
   const normalizedPhone = normalizePhone(payload.phone);
 
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const supabase = await createClient();
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email: payload.email.trim(),
     password: payload.password,
     options: {
+      // The confirmation link must land on the auth callback, which exchanges
+      // the code for a session and forwards home — not the bare site root.
+      emailRedirectTo: `${site}/${safeLocale}/auth/callback`,
       data: {
         first_name: payload.firstName.trim(),
         last_name: payload.lastName.trim(),

@@ -147,10 +147,14 @@ export async function createAccountAndBusiness(
       return { ok: false, error: "Ο κωδικός θέλει τουλάχιστον 8 χαρακτήρες." };
     }
 
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email: payload.email.trim(),
       password: payload.password,
       options: {
+        // The confirmation link must land on the auth callback, which exchanges
+        // the code for a session and forwards home — not the bare site root.
+        emailRedirectTo: `${site}/${safeLocale}/auth/callback`,
         data: {
           first_name: payload.firstName.trim(),
           last_name: payload.lastName.trim(),
