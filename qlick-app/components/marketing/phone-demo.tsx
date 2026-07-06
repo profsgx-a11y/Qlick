@@ -19,9 +19,9 @@ export interface PhoneDemoStrings {
  * (shop → service → day & time → staff → confirm → booked), cross-fading so
  * visitors see the genuine product rather than a stylised mock.
  */
-const FRAMES = ["/1.jpg", "/2.jpg", "/3.jpg", "/4.jpg", "/5.jpg", "/6.jpg"];
-// Linger a touch longer on the confirmation and success frames.
-const DELAYS = [2200, 2000, 2400, 2200, 2600, 3000];
+const FRAMES = ["/1.jpg", "/2.jpg", "/3.jpg"];
+// shop → pick day & time → confirm. Linger a touch on the confirmation.
+const DELAYS = [2600, 2600, 3200];
 
 export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
   const reduce = useReducedMotion();
@@ -40,7 +40,7 @@ export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
       ref={rootRef}
       className="relative mx-auto w-[300px] rounded-[44px] border border-border-strong bg-surface p-2.5 shadow-2xl shadow-black/70 ring-1 ring-white/5 sm:w-[320px]"
     >
-      <div className="relative h-[458px] overflow-hidden rounded-[34px] bg-background sm:h-[490px]">
+      <div className="relative h-[540px] overflow-hidden rounded-[34px] bg-background sm:h-[578px]">
         {FRAMES.map((src, idx) => (
           <motion.img
             // eslint-disable-next-line @next/next/no-img-element
