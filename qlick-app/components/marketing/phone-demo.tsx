@@ -16,13 +16,13 @@ export interface PhoneDemoStrings {
 /**
  * A looping, self-playing preview of the *real* booking flow inside a phone
  * frame. These are actual screenshots of the live /b/[slug]/book journey
- * (shop → service → day & time → staff → confirm → booked), cross-fading so
+ * (service → day & time → staff → confirm → booked), cross-fading so
  * visitors see the genuine product rather than a stylised mock.
  */
-const FRAMES = ["/1.png", "/2.png", "/3.png", "/4.png", "/5.png", "/6.png"];
-// shop → services → day & time → staff → confirm → booked.
+const FRAMES = ["/2.png", "/3.png", "/4.png", "/5.png", "/6.png"];
+// services → day & time → staff → confirm → booked.
 // Linger a touch on the final confirmation screen.
-const DELAYS = [2600, 2400, 2600, 2400, 2600, 3400];
+const DELAYS = [2600, 2600, 2400, 2600, 3400];
 
 export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
   const reduce = useReducedMotion();
