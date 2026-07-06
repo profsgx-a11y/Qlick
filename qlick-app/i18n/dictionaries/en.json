@@ -921,6 +921,9 @@
     },
     "calendar": {
       "subtitle": "Appointments by day, week or month",
+      "notifyTitle": "New booking",
+      "notifyCancelTitle": "Booking cancelled",
+      "notifyDismiss": "Dismiss",
       "guideButton": "Guide",
       "guideTitle": "How the calendar works",
       "guideTip1": "Click an empty time cell to add an appointment (name, phone, service).",

@@ -18,6 +18,7 @@ import {
 } from "@/lib/calendar";
 import { dayOfWeekInZone, type DayHours, type Closure } from "@/lib/availability";
 import { CalendarClient } from "./calendar-client";
+import { NewBookingNotifier } from "@/components/dashboard/new-booking-notifier";
 
 type ViewMode = "day" | "week" | "month";
 
@@ -276,6 +277,7 @@ export default async function CalendarPage({
         staffSchedule={staffSchedule}
         staffTimeOff={staffTimeOff}
       />
+      <NewBookingNotifier businessId={business.id} tz={tz} locale={locale} />
     </>
   );
 }
