@@ -74,7 +74,7 @@ export function HeroVisual({ posterPng, posterSvg, qrSvg, toasts }: HeroVisualPr
           <motion.div
             animate={reduce ? undefined : { y: [0, -7, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2/95 px-4 py-3 shadow-xl shadow-black/50 backdrop-blur-md"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2/60 px-4 py-3 shadow-xl shadow-black/50 backdrop-blur-lg"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
               <CalendarCheck className="size-4" strokeWidth={2} />
@@ -98,7 +98,7 @@ export function HeroVisual({ posterPng, posterSvg, qrSvg, toasts }: HeroVisualPr
           <motion.div
             animate={reduce ? undefined : { y: [0, 8, 0] }}
             transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2/95 px-4 py-3 shadow-xl shadow-black/50 backdrop-blur-md"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-surface-2/60 px-4 py-3 shadow-xl shadow-black/50 backdrop-blur-lg"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
               <Star className="size-4 fill-gold" strokeWidth={2} />
