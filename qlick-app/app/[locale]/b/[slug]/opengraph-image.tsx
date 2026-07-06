@@ -112,7 +112,7 @@ export default async function Image({
             Qlick
           </div>
           <div style={{ fontSize: "28px", color: OG_MUTED }}>
-            {brandLine} · qlick.gr
+            {`${brandLine} · qlick.gr`}
           </div>
         </div>
       </div>
