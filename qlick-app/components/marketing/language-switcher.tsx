@@ -54,7 +54,11 @@ export function LanguageSwitcher({ current, className }: LanguageSwitcherProps) 
         <Link
           key={loc}
           href={buildHref(loc)}
-          onClick={() => setPending(loc)}
+          onClick={() => {
+            setPending(loc);
+            // Remember the choice so the bare qlick.gr entry point respects it.
+            document.cookie = `NEXT_LOCALE=${loc};path=/;max-age=31536000;samesite=lax`;
+          }}
           aria-current={loc === current ? "true" : undefined}
           className={cn(
             "relative z-10 w-9 rounded-full py-1 text-center transition-colors duration-200 ease-[var(--ease-out)]",

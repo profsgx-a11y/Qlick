@@ -52,7 +52,6 @@ export async function generateMetadata({
     title: { default: dict.meta.title, template: "%s · Qlick" },
     description: dict.meta.description,
     metadataBase: new URL("https://qlick.gr"),
-    icons: { icon: "/favicon.ico" },
     openGraph: {
       title: dict.meta.title,
       description: dict.meta.description,
