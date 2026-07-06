@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -14,6 +15,35 @@ import { FavoriteButton } from "@/components/account/favorite-button";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { formatPrice, formatDuration } from "@/lib/format";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const isEl = locale !== "en";
+  const supabase = await createClient();
+  const { data: biz } = await supabase
+    .from("businesses")
+    .select("name, description, description_en, status")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!biz || biz.status !== "active") {
+    return { title: isEl ? "Κατάστημα" : "Business" };
+  }
+  const description =
+    (isEl ? biz.description : biz.description_en) ||
+    (isEl
+      ? `Κλείσε ραντεβού online στο ${biz.name} με το Qlick.`
+      : `Book an appointment online at ${biz.name} with Qlick.`);
+  return {
+    title: biz.name,
+    description,
+    openGraph: { title: `${biz.name} · Qlick`, description, type: "website" },
+    twitter: { card: "summary_large_image", title: `${biz.name} · Qlick`, description },
+  };
+}
 
 export default async function PublicBusinessPage({
   params,
