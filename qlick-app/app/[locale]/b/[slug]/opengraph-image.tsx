@@ -4,6 +4,7 @@ import {
   OG_BG,
   OG_GOLD,
   OG_MUTED,
+  OG_REVALIDATE,
   ogFonts,
   ogBusiness,
   ogFetchImage,
@@ -12,6 +13,7 @@ import {
 export const alt = "Qlick";
 export const size = OG_SIZE;
 export const contentType = "image/png";
+export const revalidate = OG_REVALIDATE;
 
 export default async function Image({
   params,
