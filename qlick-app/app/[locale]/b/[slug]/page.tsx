@@ -37,10 +37,20 @@ export async function generateMetadata({
     (isEl
       ? `Κλείσε ραντεβού online στο ${biz.name} με το Qlick.`
       : `Book an appointment online at ${biz.name} with Qlick.`);
+  // Canonical URL (resolved against metadataBase = https://www.qlick.gr).
+  // og:url is what Facebook/Messenger key their link cache on — omitting it
+  // makes Messenger drop the preview.
+  const canonical = `/${locale}/b/${slug}`;
   return {
     title: biz.name,
     description,
-    openGraph: { title: `${biz.name} · Qlick`, description, type: "website" },
+    alternates: { canonical },
+    openGraph: {
+      title: `${biz.name} · Qlick`,
+      description,
+      type: "website",
+      url: canonical,
+    },
     twitter: { card: "summary_large_image", title: `${biz.name} · Qlick`, description },
   };
 }
