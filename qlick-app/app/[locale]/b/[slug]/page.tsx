@@ -11,6 +11,7 @@ import {
   Tag,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { JsonLd } from "@/components/seo/json-ld";
 import { FavoriteButton } from "@/components/account/favorite-button";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
@@ -44,7 +45,14 @@ export async function generateMetadata({
   return {
     title: biz.name,
     description,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      languages: {
+        el: `/el/b/${slug}`,
+        en: `/en/b/${slug}`,
+        "x-default": `/el/b/${slug}`,
+      },
+    },
     openGraph: {
       title: `${biz.name} · Qlick`,
       description,
@@ -122,6 +130,8 @@ export default async function PublicBusinessPage({
     street?: string;
     city?: string;
     postcode?: string;
+    lat?: number | null;
+    lng?: number | null;
   };
   const addressLine = [address.street, address.city, address.postcode]
     .filter(Boolean)
@@ -180,8 +190,67 @@ export default async function PublicBusinessPage({
       year: "numeric",
     }).format(new Date(iso));
 
+  // ── LocalBusiness structured data (rich results: rating, hours, address) ──
+  const SCHEMA_DAYS = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
+  const openingHours = (hours ?? [])
+    .filter((h) => !h.is_closed && h.open_time && h.close_time)
+    .map((h) => ({
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: SCHEMA_DAYS[h.day_of_week],
+      opens: h.open_time!.slice(0, 5),
+      closes: h.close_time!.slice(0, 5),
+    }));
+  const shopUrl = `https://www.qlick.gr/${locale}/b/${business.slug}`;
+  const businessSchema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": shopUrl,
+    name: business.name,
+    url: shopUrl,
+    ...(business.logo_url || business.cover_url
+      ? { image: business.logo_url || business.cover_url }
+      : {}),
+    ...(business.description ? { description: business.description } : {}),
+    ...(business.phone ? { telephone: business.phone } : {}),
+    address: {
+      "@type": "PostalAddress",
+      ...(address.street ? { streetAddress: address.street } : {}),
+      ...(address.city ? { addressLocality: address.city } : {}),
+      ...(address.postcode ? { postalCode: address.postcode } : {}),
+      addressCountry: "GR",
+    },
+    ...(address.lat != null && address.lng != null
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: address.lat,
+            longitude: address.lng,
+          },
+        }
+      : {}),
+    ...(openingHours.length ? { openingHoursSpecification: openingHours } : {}),
+    ...(showReviews && reviewCount > 0
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: reviewAvg.toFixed(1),
+            reviewCount,
+          },
+        }
+      : {}),
+  };
+
   return (
     <div className="min-h-screen">
+      <JsonLd data={businessSchema} />
       {/* Hero — cover photo banner (cover photo → branded gold-glow backdrop) */}
       <section className="border-b border-border">
         <div className="relative h-44 w-full overflow-hidden sm:h-60 md:h-64">

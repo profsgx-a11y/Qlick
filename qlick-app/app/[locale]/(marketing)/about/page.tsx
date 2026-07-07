@@ -13,6 +13,24 @@ import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { Reveal, Magnetic, Parallax, TiltCard } from "@/components/motion/primitives";
 import { getDictionary, hasLocale } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/about",
+    isEl ? "Σχετικά με εμάς" : "About us",
+    isEl
+      ? "Το Qlick είναι η ελληνική πλατφόρμα online ραντεβού με QR — απλή, γρήγορη και δίγλωσση."
+      : "Qlick is the Greek QR-first online booking platform — simple, fast and bilingual.",
+  );
+}
 
 export default async function AboutPage({
   params,

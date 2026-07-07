@@ -15,6 +15,24 @@ import { Button } from "@/components/ui/button";
 import { Reveal, Magnetic } from "@/components/motion/primitives";
 import { CalendarVisual } from "@/components/marketing/calendar-visual";
 import { getDictionary, hasLocale } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/for-business",
+    isEl ? "Για επιχειρήσεις" : "For business",
+    isEl
+      ? "Δέξου online ραντεβού 24/7, διαχειρίσου ημερολόγιο, προσωπικό και QR poster — 3 μήνες δωρεάν με το Qlick."
+      : "Take 24/7 online bookings, manage your calendar, staff and QR poster — 3 months free with Qlick.",
+  );
+}
 
 export default async function ForBusinessPage({
   params,
