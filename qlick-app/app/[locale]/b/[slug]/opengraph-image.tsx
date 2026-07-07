@@ -4,6 +4,7 @@ import {
   OG_BG,
   OG_GOLD,
   OG_MUTED,
+  OG_HEADERS,
   ogFonts,
   ogBusiness,
   ogFetchImage,
@@ -118,6 +119,6 @@ export default async function Image({
         </div>
       </div>
     ),
-    { ...size, fonts: await ogFonts() },
+    { ...size, fonts: await ogFonts(), headers: OG_HEADERS },
   );
 }

@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { OG_SIZE, OG_BG, OG_GOLD, OG_MUTED, ogFonts } from "@/lib/og";
+import { OG_SIZE, OG_BG, OG_GOLD, OG_MUTED, OG_HEADERS, ogFonts } from "@/lib/og";
 
 export const alt = "Qlick";
 export const size = OG_SIZE;
@@ -56,6 +56,6 @@ export default async function Image({
         </div>
       </div>
     ),
-    { ...size, fonts: await ogFonts() },
+    { ...size, fonts: await ogFonts(), headers: OG_HEADERS },
   );
 }

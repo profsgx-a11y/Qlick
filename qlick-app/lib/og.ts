@@ -14,6 +14,15 @@ export const OG_SIZE = { width: 1200, height: 630 };
 // (~1.7s cold), which trips the short fetch timeout of Messenger/WhatsApp.
 export const OG_REVALIDATE = 86400;
 
+// Explicit CDN caching for the generated images. The route stays dynamic (ƒ),
+// so `revalidate` alone doesn't cache it — these headers make Vercel's edge
+// cache the PNG (s-maxage) and serve stale while revalidating, keeping scrapes
+// instant after the first render.
+export const OG_HEADERS = {
+  "cache-control":
+    "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+};
+
 // Brand palette for the share cards (Qlick dark + gold), independent of the
 // runtime CSS tokens which aren't available inside satori.
 export const OG_BG = "#0b0b0b";
