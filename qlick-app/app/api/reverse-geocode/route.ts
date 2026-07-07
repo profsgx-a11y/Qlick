@@ -22,11 +22,13 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json() as { address?: Record<string, string> };
     const a = data.address ?? {};
-    const suburb =
-      a.suburb || a.neighbourhood || a.quarter || a.road || "";
     const city =
       a.city || a.town || a.village || a.municipality || "";
-    const label = [suburb, city].filter(Boolean).join(", ");
+    const suburb =
+      a.suburb || a.neighbourhood || a.quarter || a.road || "";
+    // Prefer the town/city name (e.g. "Κομοτηνή") over a hyper-local suburb
+    // ("Ήφαιστος") — the search uses a wide radius, so city level is clearer.
+    const label = city || suburb;
 
     return NextResponse.json({ label });
   } catch {
