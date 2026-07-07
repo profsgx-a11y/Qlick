@@ -5,6 +5,24 @@ import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { Reveal, Magnetic } from "@/components/motion/primitives";
 import { getDictionary, hasLocale } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/contact",
+    isEl ? "Επικοινωνία" : "Contact",
+    isEl
+      ? "Επικοινώνησε με την ομάδα του Qlick — email και υποστήριξη για επιχειρήσεις και πελάτες."
+      : "Get in touch with the Qlick team — email and support for businesses and customers.",
+  );
+}
 
 export default async function ContactPage({
   params,

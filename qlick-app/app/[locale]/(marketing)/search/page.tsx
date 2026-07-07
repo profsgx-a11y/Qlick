@@ -7,10 +7,28 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FavoriteButton } from "@/components/account/favorite-button";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
 import {
   BusinessSearch,
   type CategoryOption,
 } from "@/components/account/business-search";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/search",
+    isEl ? "Βρες καταστήματα" : "Find businesses",
+    isEl
+      ? "Βρες κομμωτήρια, κουρεία, ιατρεία, γυμναστήρια και άλλα κοντά σου και κλείσε ραντεβού online με το Qlick."
+      : "Find hair salons, barbers, clinics, gyms and more near you and book online with Qlick.",
+  );
+}
 
 const RADIUS_KM = 30;
 

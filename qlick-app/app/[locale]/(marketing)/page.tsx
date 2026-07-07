@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Reveal, CountUp, Magnetic } from "@/components/motion/primitives";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { PhoneDemo } from "@/components/marketing/phone-demo";
@@ -60,6 +61,20 @@ const industryIcons = [
 const reliabilityIcons = [ShieldCheck, Lock, Languages, KeyRound, BadgeEuro, Clock];
 
 const retentionIcons = [QrCode, CalendarCheck, UserRound];
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  return {
+    alternates: {
+      canonical: `/${locale}`,
+      languages: { el: "/el", en: "/en", "x-default": "/el" },
+    },
+  };
+}
 
 export default async function LandingPage({
   params,
@@ -95,6 +110,28 @@ export default async function LandingPage({
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Qlick",
+          url: "https://www.qlick.gr",
+          logo: "https://www.qlick.gr/icon.svg",
+        }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Qlick",
+          url: "https://www.qlick.gr",
+          potentialAction: {
+            "@type": "SearchAction",
+            target: `https://www.qlick.gr/${locale}/search?q={search_term_string}`,
+            "query-input": "required name=search_term_string",
+          },
+        }}
+      />
       {/* ──────────── HERO ──────────── */}
       <section className="bg-gold-glow relative overflow-hidden pt-14 pb-24 md:pt-20 md:pb-28">
         <div className="bg-hero-grid pointer-events-none absolute inset-0" />
