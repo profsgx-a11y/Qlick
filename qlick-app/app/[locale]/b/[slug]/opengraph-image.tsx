@@ -4,6 +4,7 @@ import {
   OG_BG,
   OG_GOLD,
   OG_MUTED,
+  OG_HEADERS,
   ogFonts,
   ogBusiness,
   ogFetchImage,
@@ -26,7 +27,7 @@ export default async function Image({
   const name = biz?.name ?? "Qlick";
   const accent = biz?.accent || OG_GOLD;
   const tagline = isEl ? "Κλείσε ραντεβού online" : "Book online";
-  const brandLine = isEl ? "με το Qlick" : "with Qlick";
+  const poweredBy = isEl ? "Με την υποστήριξη της" : "Powered by";
 
   const logo = biz?.logoUrl ? await ogFetchImage(biz.logoUrl) : null;
   const monogram = name.trim().charAt(0).toUpperCase() || "Q";
@@ -110,15 +111,12 @@ export default async function Image({
             marginTop: "auto",
           }}
         >
-          <div style={{ fontSize: "34px", fontWeight: 700, color: accent }}>
-            Qlick
-          </div>
           <div style={{ fontSize: "28px", color: OG_MUTED }}>
-            {`${brandLine} · qlick.gr`}
+            {`${poweredBy} · qlick.gr`}
           </div>
         </div>
       </div>
     ),
-    { ...size, fonts: await ogFonts() },
+    { ...size, fonts: await ogFonts(), headers: OG_HEADERS },
   );
 }
