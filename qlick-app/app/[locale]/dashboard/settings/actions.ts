@@ -285,3 +285,68 @@ export async function saveHours(
   revalidatePath(`/${safeLocale}/b/${(biz as { slug?: string }).slug ?? ""}`);
   return { ok: true };
 }
+
+export interface DeletionResult {
+  ok: boolean;
+  error?: string;
+  scheduledAt?: string;
+}
+
+/**
+ * Schedules the shop for deletion in 24 hours and takes it offline immediately.
+ * Owner/manager only (the RPC re-checks). Reversible via cancelShopDeletion.
+ */
+export async function scheduleShopDeletion(
+  locale: string,
+): Promise<DeletionResult> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const supabase = await createClient();
+
+  const { data: biz } = await supabase
+    .from("my_businesses")
+    .select("id, my_role, slug")
+    .limit(1)
+    .maybeSingle();
+  if (!biz?.id || (biz.my_role !== "owner" && biz.my_role !== "manager")) {
+    return { ok: false, error: "no_permission" };
+  }
+
+  const { data, error } = await supabase.rpc("schedule_business_deletion", {
+    p_business: biz.id,
+  });
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/settings`);
+  revalidatePath(`/${safeLocale}/dashboard`);
+  const slug = (biz as { slug?: string }).slug;
+  if (slug) revalidatePath(`/${safeLocale}/b/${slug}`);
+  return { ok: true, scheduledAt: data as string };
+}
+
+/** Cancels a pending deletion within the 24h window and re-publishes the shop. */
+export async function cancelShopDeletion(
+  locale: string,
+): Promise<DeletionResult> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const supabase = await createClient();
+
+  const { data: biz } = await supabase
+    .from("my_businesses")
+    .select("id, my_role, slug")
+    .limit(1)
+    .maybeSingle();
+  if (!biz?.id || (biz.my_role !== "owner" && biz.my_role !== "manager")) {
+    return { ok: false, error: "no_permission" };
+  }
+
+  const { error } = await supabase.rpc("cancel_business_deletion", {
+    p_business: biz.id,
+  });
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/settings`);
+  revalidatePath(`/${safeLocale}/dashboard`);
+  const slug = (biz as { slug?: string }).slug;
+  if (slug) revalidatePath(`/${safeLocale}/b/${slug}`);
+  return { ok: true };
+}

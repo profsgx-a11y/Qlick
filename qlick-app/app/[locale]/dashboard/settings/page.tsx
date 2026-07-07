@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Topbar } from "@/components/dashboard/topbar";
+import { Button } from "@/components/ui/button";
 import { requireBusiness } from "@/lib/dashboard";
 import { createClient } from "@/lib/supabase/server";
+import { getPlanState } from "@/lib/subscription";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { HoursEditor } from "./hours-editor";
 import { BusinessInfoEditor } from "./business-info-editor";
 import { CategoryEditor, type CategoryGroup } from "./category-editor";
+import { DeleteShop } from "./delete-shop";
 import type { DayHoursInput } from "./actions";
 
 export default async function SettingsPage({
@@ -24,7 +28,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase
         .from("businesses")
-        .select("name, email, phone, landline, address, slug, status, day_order, logo_url, cover_url")
+        .select("name, email, phone, landline, address, slug, status, day_order, logo_url, cover_url, deletion_scheduled_at")
         .eq("id", business.id)
         .maybeSingle(),
       supabase
@@ -97,6 +101,28 @@ export default async function SettingsPage({
     };
   });
 
+  // Subscription summary for the top-of-page card.
+  const planState = await getPlanState(supabase, business.id);
+  const st = t.settings;
+  const planLabel =
+    planState.plan === "monthly"
+      ? st.planMonthly
+      : planState.plan === "yearly"
+        ? st.planYearly
+        : st.planFree;
+  const subStatus = !planState.active
+    ? st.planExpired
+    : planState.expiresAt === null || planState.daysLeft === null
+      ? st.planNoExpiry
+      : planState.daysLeft <= 0
+        ? st.planExpiresToday
+        : `${st.planExpires.replace(
+            "{date}",
+            new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "el-GR", {
+              dateStyle: "long",
+            }).format(new Date(planState.expiresAt)),
+          )} · ${st.planDaysLeft.replace("{n}", String(planState.daysLeft))}`;
+
   return (
     <>
       <Topbar
@@ -106,6 +132,28 @@ export default async function SettingsPage({
         userLabel={fullName || email || ""}
       />
       <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        {/* Subscription — plan, expiry, renew */}
+        <section className="rounded-2xl border border-border bg-surface p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                {st.subscriptionTitle}
+              </h2>
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                <span className="rounded-full border border-gold/30 bg-gold/10 px-2.5 py-0.5 text-xs font-medium text-gold">
+                  {planLabel}
+                </span>
+                <span className={planState.active ? "text-muted" : "text-danger"}>
+                  {subStatus}
+                </span>
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href={`/${locale}#pricing`}>{st.renewSubscription}</Link>
+            </Button>
+          </div>
+        </section>
+
         <BusinessInfoEditor
           locale={locale}
           slug={b?.slug ?? ""}
@@ -136,6 +184,12 @@ export default async function SettingsPage({
         />
 
         <HoursEditor locale={locale} initialDays={initialDays} />
+
+        {/* Danger zone — delete shop (24h grace, cancellable) */}
+        <DeleteShop
+          locale={locale}
+          scheduledAt={b?.deletion_scheduled_at ?? null}
+        />
       </div>
     </>
   );

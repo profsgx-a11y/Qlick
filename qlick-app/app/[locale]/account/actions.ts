@@ -129,17 +129,37 @@ export async function updateProfile(
   return { ok: true };
 }
 
-/** Changes the signed-in user's password. */
+/**
+ * Changes the signed-in user's password. The current password is required and
+ * verified (re-auth) first, so a hijacked open session can't silently reset it.
+ * Returns stable codes; the client maps them to the active locale.
+ */
 export async function changePassword(
   _locale: string,
+  currentPassword: string,
   newPassword: string,
 ): Promise<SimpleResult> {
+  if (!currentPassword.trim()) {
+    return { ok: false, error: "enter_current_password" };
+  }
   if (!isValidPassword(newPassword)) {
-    return { ok: false, error: "Ο κωδικός θέλει τουλάχιστον 8 χαρακτήρες." };
+    return { ok: false, error: "weak_password" };
   }
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { ok: false, error: "change_failed" };
+
+  // Verify the current password by re-authenticating with it.
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (reauthError) return { ok: false, error: "wrong_current_password" };
+
   const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) return { ok: false, error: "Δεν άλλαξε ο κωδικός. Δοκίμασε ξανά." };
+  if (error) return { ok: false, error: "change_failed" };
   return { ok: true };
 }
 
