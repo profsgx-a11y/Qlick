@@ -41,30 +41,33 @@ export function Footer({ locale, dict }: FooterProps) {
   return (
     <footer className="border-t border-border bg-surface/40 py-16">
       <Container size="xl">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 lg:grid-cols-4">
           <div className="flex flex-col gap-4">
             <Logo />
             <p className="max-w-xs text-sm text-muted">{dict.footer.tagline}</p>
           </div>
-          {groups.map((group) => (
-            <div key={group.title}>
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-gold">
-                {group.title}
-              </h3>
-              <ul className="flex flex-col gap-2">
-                {group.links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-muted transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Mobile: the three link groups sit side-by-side in 3 columns. */}
+          <div className="grid grid-cols-3 gap-x-4 gap-y-8 lg:col-span-3 lg:gap-12">
+            {groups.map((group) => (
+              <div key={group.title}>
+                <h3 className="mb-4 text-[11px] font-semibold uppercase tracking-wide text-gold sm:text-xs sm:tracking-widest">
+                  {group.title}
+                </h3>
+                <ul className="flex flex-col gap-2">
+                  {group.links.map((link) => (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        className="text-[13px] text-muted transition-colors hover:text-foreground sm:text-sm"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="mt-12 border-t border-border pt-6 text-xs text-muted-2">
           {dict.footer.copyright.replace("{year}", String(year))}
