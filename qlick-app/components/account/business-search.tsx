@@ -43,6 +43,7 @@ export function BusinessSearch({
   );
   const [err, setErr] = useState<string | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   // Auto-detect location via GPS on first load — only when no location is
   // already set (e.g. from a previous search or saved home address).
@@ -83,15 +84,35 @@ export function BusinessSearch({
     }
   };
 
-  const search = () => {
-    if (!coords) {
+  const search = async () => {
+    setErr(null);
+    let c = coords;
+    // If the user typed a city but didn't pick a suggestion, resolve it to
+    // coordinates on the fly so they don't have to click the dropdown.
+    if (!c && locText.trim().length >= 3) {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `/api/geocode?q=${encodeURIComponent(locText.trim())}&kind=city`,
+        );
+        const data = (await res.json()) as {
+          results?: { lat: number; lng: number }[];
+        };
+        const first = data.results?.[0];
+        if (first) c = { lat: first.lat, lng: first.lng };
+      } catch {
+        // fall through to the pick-area message
+      }
+      setSearching(false);
+    }
+    if (!c) {
       setErr(t.pickArea);
       return;
     }
     const params = new URLSearchParams();
     if (cat) params.set("cat", cat);
-    params.set("lat", String(coords.lat));
-    params.set("lng", String(coords.lng));
+    params.set("lat", String(c.lat));
+    params.set("lng", String(c.lng));
     if (locText) params.set("q", locText);
     const target = basePath ?? `/${locale}/account/search`;
     router.push(`${target}?${params.toString()}`);
@@ -131,7 +152,7 @@ export function BusinessSearch({
           />
         </Field>
 
-        <Button onClick={search} className="sm:h-11">
+        <Button onClick={search} disabled={searching} className="sm:h-11">
           <Search className="size-4" />
           {t.searchBtn}
         </Button>
