@@ -412,6 +412,7 @@ export type Database = {
           created_at: string
           currency: string
           day_order: Json
+          deletion_scheduled_at: string | null
           description: string | null
           description_en: string | null
           email: string | null
@@ -1202,6 +1203,8 @@ export type Database = {
       }
       business_plan_state: { Args: { p_business_id: string }; Returns: Json }
       cancel_booking: { Args: { p_booking_id: string }; Returns: undefined }
+      schedule_business_deletion: { Args: { p_business: string }; Returns: string }
+      cancel_business_deletion: { Args: { p_business: string }; Returns: undefined }
       create_booking: {
         Args: {
           p_business_id: string

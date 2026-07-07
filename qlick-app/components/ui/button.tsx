@@ -15,6 +15,7 @@ const buttonVariants = cva(
         ghost: "text-foreground hover:bg-surface-2",
         outline:
           "border border-gold text-gold hover:bg-gold hover:text-black",
+        danger: "bg-danger text-white hover:bg-danger/90",
         link: "text-gold underline-offset-4 hover:underline",
       },
       size: {

@@ -11,6 +11,8 @@ import {
   type SelectedAddress,
 } from "@/components/ui/address-autocomplete";
 import { useDict } from "@/i18n/provider";
+import { PasswordStrength } from "@/components/auth/password-strength";
+import { authDict } from "@/lib/i18n-dict";
 import { updateProfile, changePassword } from "@/app/[locale]/account/actions";
 
 /** Stored E.164 → display string; empty → erasable "+30 " prefill. */
@@ -69,11 +71,13 @@ export function ProfileForm({
   const [infoErr, setInfoErr] = useState<string | null>(null);
   const [infoPending, startInfo] = useTransition();
 
+  const [oldPass, setOldPass] = useState("");
   const [pass, setPass] = useState("");
   const [pass2, setPass2] = useState("");
   const [savedPass, setSavedPass] = useState(false);
   const [passErr, setPassErr] = useState<string | null>(null);
   const [passPending, startPass] = useTransition();
+  const strengthLabels = authDict[locale === "en" ? "en" : "el"].passwordStrength;
 
   const onCitySelect = (a: SelectedAddress) => {
     setCity(a.city || a.label.split(",")[0]);
@@ -110,9 +114,22 @@ export function ProfileForm({
     });
   };
 
+  const passErrText = (code: string | undefined) =>
+    code === "enter_current_password"
+      ? t.enterCurrentPassword
+      : code === "wrong_current_password"
+        ? t.wrongCurrentPassword
+        : code === "weak_password"
+          ? t.passwordMin
+          : t.genericError;
+
   const savePass = () => {
     setPassErr(null);
     setSavedPass(false);
+    if (!oldPass) {
+      setPassErr(t.enterCurrentPassword);
+      return;
+    }
     if (pass.length < 8) {
       setPassErr(t.passwordMin);
       return;
@@ -122,12 +139,13 @@ export function ProfileForm({
       return;
     }
     startPass(async () => {
-      const res = await changePassword(locale, pass);
+      const res = await changePassword(locale, oldPass, pass);
       if (!res.ok) {
-        setPassErr(t.genericError);
+        setPassErr(passErrText(res.error));
         return;
       }
       setSavedPass(true);
+      setOldPass("");
       setPass("");
       setPass2("");
     });
@@ -249,16 +267,30 @@ export function ProfileForm({
           {t.changePassword}
         </h2>
 
-        <Field label={t.newPassword} htmlFor="pf-pass" hint={t.passwordHint}>
+        <Field label={t.currentPassword} htmlFor="pf-oldpass">
           <Input
-            id="pf-pass"
+            id="pf-oldpass"
             type="password"
-            value={pass}
-            autoComplete="new-password"
-            onChange={(e) => setPass(e.target.value)}
+            value={oldPass}
+            autoComplete="current-password"
+            onChange={(e) => setOldPass(e.target.value)}
             disabled={passPending}
           />
         </Field>
+
+        <div>
+          <Field label={t.newPassword} htmlFor="pf-pass" hint={t.passwordHint}>
+            <Input
+              id="pf-pass"
+              type="password"
+              value={pass}
+              autoComplete="new-password"
+              onChange={(e) => setPass(e.target.value)}
+              disabled={passPending}
+            />
+          </Field>
+          <PasswordStrength password={pass} labels={strengthLabels} />
+        </div>
 
         <Field label={t.confirmPassword} htmlFor="pf-pass2">
           <Input
