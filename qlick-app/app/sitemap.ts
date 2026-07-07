@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { guides } from "@/lib/guides";
 
 const BASE = "https://www.qlick.gr";
 const LOCALES = ["el", "en"] as const;
@@ -8,6 +9,8 @@ const STATIC_PATHS = [
   "",
   "/for-business",
   "/search",
+  "/gia",
+  "/blog",
   "/about",
   "/contact",
   "/privacy",
@@ -31,13 +34,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
-  // Active shop pages (skip drafts, suspended, and ones pending deletion).
+  // Guides / blog articles.
+  for (const g of guides) {
+    for (const locale of LOCALES) {
+      entries.push({
+        url: `${BASE}/${locale}/blog/${g.slug}`,
+        lastModified: g.date,
+        changeFrequency: "monthly",
+        priority: 0.6,
+      });
+    }
+  }
+
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       { auth: { persistSession: false } },
     );
+
+    // Industry landing pages (one per category).
+    const { data: cats } = await supabase.from("categories").select("slug");
+    for (const c of cats ?? []) {
+      for (const locale of LOCALES) {
+        entries.push({
+          url: `${BASE}/${locale}/gia/${c.slug}`,
+          changeFrequency: "weekly",
+          priority: 0.7,
+        });
+      }
+    }
+
+    // Active shop pages (skip drafts, suspended, and ones pending deletion).
     const { data } = await supabase
       .from("businesses")
       .select("slug, updated_at")

@@ -389,9 +389,10 @@
     "links": {
       "features": "Features",
       "pricing": "Pricing",
+      "industries": "Industries",
       "qrEditor": "QR Editor",
       "about": "About",
-      "blog": "Blog",
+      "blog": "Guides",
       "contact": "Contact",
       "terms": "Terms of Service",
       "privacy": "Privacy",

@@ -16,6 +16,8 @@ export function Footer({ locale, dict }: FooterProps) {
       links: [
         { href: `/${locale}#features`, label: dict.footer.links.features },
         { href: `/${locale}#pricing`, label: dict.footer.links.pricing },
+        { href: `/${locale}/gia`, label: dict.footer.links.industries },
+        { href: `/${locale}/blog`, label: dict.footer.links.blog },
         { href: `/${locale}/qr-editor`, label: dict.footer.links.qrEditor },
       ],
     },
