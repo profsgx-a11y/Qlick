@@ -2084,19 +2084,23 @@ function ColorInput({
       }
     ).EyeDropper;
     if (!ED) return;
+    let hex: string;
     try {
       const res = await new ED().open();
-      onChange(res.sRGBHex);
-      try {
-        await navigator.clipboard.writeText(res.sRGBHex);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      } catch {
-        /* clipboard blocked — color still applied */
-      }
+      hex = res.sRGBHex;
     } catch {
-      /* user cancelled */
+      return; // user cancelled
     }
+    // Defer the color change to the next frame. Applying it synchronously the
+    // moment the native eyedropper resolves — straight into a heavy canvas
+    // re-render — can hang some Chromium/Brave builds. Letting the picker fully
+    // tear down first avoids the freeze. (Clipboard write removed for the same
+    // reason; the colour is applied directly.)
+    requestAnimationFrame(() => {
+      onChange(hex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
   };
 
   return (
