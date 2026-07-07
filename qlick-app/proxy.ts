@@ -16,6 +16,18 @@ function detectLocale(request: NextRequest): string {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ── 0. Metadata image routes ─────────────────────────────────
+  // These are public, cacheable PNGs. The Supabase session refresh below
+  // attaches a Set-Cookie, which makes the response uncacheable at the edge
+  // (X-Vercel-Cache stays MISS) and re-renders on every social scrape. Let
+  // them pass through untouched so their s-maxage Cache-Control is honoured.
+  if (
+    pathname.endsWith("/opengraph-image") ||
+    pathname.endsWith("/twitter-image")
+  ) {
+    return NextResponse.next();
+  }
+
   // ── 1. Locale routing ────────────────────────────────────────
   const pathnameHasLocale = locales.some(
     (loc) => pathname === `/${loc}` || pathname.startsWith(`/${loc}/`),
