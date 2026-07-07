@@ -27,7 +27,7 @@ export default async function Image({
   const name = biz?.name ?? "Qlick";
   const accent = biz?.accent || OG_GOLD;
   const tagline = isEl ? "Κλείσε ραντεβού online" : "Book online";
-  const poweredBy = isEl ? "με την υποστήριξη της" : "powered by";
+  const poweredBy = isEl ? "Με την υποστήριξη της" : "Powered by";
 
   const logo = biz?.logoUrl ? await ogFetchImage(biz.logoUrl) : null;
   const monogram = name.trim().charAt(0).toUpperCase() || "Q";
@@ -111,11 +111,9 @@ export default async function Image({
             marginTop: "auto",
           }}
         >
-          <div style={{ fontSize: "28px", color: OG_MUTED }}>{poweredBy}</div>
-          <div style={{ fontSize: "28px", fontWeight: 700, color: accent }}>
-            Qlick
+          <div style={{ fontSize: "28px", color: OG_MUTED }}>
+            {`${poweredBy} · qlick.gr`}
           </div>
-          <div style={{ fontSize: "28px", color: OG_MUTED }}>· qlick.gr</div>
         </div>
       </div>
     ),
