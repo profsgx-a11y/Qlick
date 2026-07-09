@@ -101,12 +101,21 @@ export default async function LandingPage({
       ? await renderDesignToSvg(showcase)
       : null;
 
-  // Prefer a flat PNG of the poster if one is dropped into /public. A single raster
-  // image survives browser "night mode" filters (treated as a photo) — unlike the
-  // hybrid inline SVG, whose embedded schedule-table image goes dark-on-dark.
-  const heroPng = existsSync(join(process.cwd(), "public", "hero-poster.png"))
-    ? "/hero-poster.png"
-    : null;
+  // Prefer flat PNGs of posters dropped into /public. A raster image survives
+  // browser "night mode" filters (treated as a photo) — unlike the hybrid
+  // inline SVG, whose embedded schedule-table image goes dark-on-dark.
+  // hero-poster-1..3.png rotate with a 3D flip; hero-poster.png is the
+  // single-image fallback.
+  const heroPngs = [1, 2, 3]
+    .map((n) => `hero-poster-${n}.png`)
+    .filter((f) => existsSync(join(process.cwd(), "public", f)))
+    .map((f) => `/${f}`);
+  if (
+    heroPngs.length === 0 &&
+    existsSync(join(process.cwd(), "public", "hero-poster.png"))
+  ) {
+    heroPngs.push("/hero-poster.png");
+  }
 
   return (
     <>
@@ -177,7 +186,7 @@ export default async function LandingPage({
 
             <div className="flex items-center justify-center lg:col-span-5 lg:justify-end lg:pr-10">
               <HeroVisual
-                posterPng={heroPng}
+                posterPngs={heroPngs}
                 posterSvg={posterSvg}
                 qrSvg={qrSvg}
                 toasts={dict.hero.toasts}

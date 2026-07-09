@@ -6,8 +6,8 @@ import { CalendarCheck, Star } from "lucide-react";
 import { TiltCard } from "@/components/motion/primitives";
 
 interface HeroVisualProps {
-  /** flat PNG of the poster (preferred) */
-  posterPng: string | null;
+  /** flat PNGs of example posters (preferred) — 2+ auto-rotate with a 3D flip */
+  posterPngs: string[];
   /** rendered poster SVG markup (fallback) */
   posterSvg: string | null;
   /** plain QR svg markup (last resort) */
@@ -15,21 +15,79 @@ interface HeroVisualProps {
   toasts: { title: string; body: string }[];
 }
 
+const FLIP_EVERY_MS = 5000;
+
+/**
+ * Rotates through the example posters with a 3D card flip. The two faces
+ * always hold "current" and "next"; the hidden face is retargeted only after
+ * a flip completes, so the visible poster never changes mid-animation.
+ */
+function PosterFlip({ srcs }: { srcs: string[] }) {
+  const reduce = useReducedMotion();
+  const n = srcs.length;
+  const [count, setCount] = React.useState(0);
+  const [faces, setFaces] = React.useState({ front: 0, back: 1 % n });
+
+  React.useEffect(() => {
+    if (n < 2) return;
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") setCount((c) => c + 1);
+    }, FLIP_EVERY_MS);
+    return () => clearInterval(t);
+  }, [n]);
+
+  const faceCls =
+    "absolute inset-0 h-full w-full rounded-2xl object-cover [backface-visibility:hidden]";
+
+  if (n === 1 || reduce) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={srcs[count % n]}
+        alt="Qlick QR poster"
+        className="aspect-[794/1123] w-full rounded-2xl object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="aspect-[794/1123] w-full [perspective:1200px]">
+      <motion.div
+        className="relative h-full w-full [transform-style:preserve-3d]"
+        animate={{ rotateY: count * 180 }}
+        transition={{ duration: 1.1, ease: [0.32, 0.72, 0.15, 1] }}
+        onAnimationComplete={() =>
+          setFaces((f) =>
+            count % 2 === 1
+              ? { ...f, front: (count + 1) % n }
+              : { ...f, back: (count + 1) % n },
+          )
+        }
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={srcs[faces.front]} alt="Qlick QR poster" className={faceCls} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={srcs[faces.back]}
+          alt=""
+          aria-hidden
+          className={`${faceCls} [transform:rotateY(180deg)]`}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
 /**
  * The hero's right side: the QR poster as a physical object — 3D tilt that
  * follows the pointer, a slow float, and booking/review notifications that
  * drift in around it so the product feels alive on first paint.
  */
-export function HeroVisual({ posterPng, posterSvg, qrSvg, toasts }: HeroVisualProps) {
+export function HeroVisual({ posterPngs, posterSvg, qrSvg, toasts }: HeroVisualProps) {
   const reduce = useReducedMotion();
 
-  const poster = posterPng ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={posterPng}
-      alt="Qlick QR poster"
-      className="aspect-[794/1123] w-full rounded-2xl object-cover"
-    />
+  const poster = posterPngs.length > 0 ? (
+    <PosterFlip srcs={posterPngs} />
   ) : posterSvg ? (
     <div
       className="aspect-[794/1123] w-full overflow-hidden rounded-2xl [&>svg]:h-full [&>svg]:w-full"
