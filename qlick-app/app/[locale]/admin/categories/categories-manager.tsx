@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { useDict } from "@/i18n/provider";
 import { adminErr } from "@/lib/admin-error";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { saveCategory, deleteCategory } from "./actions";
 
 interface Cat {
@@ -46,6 +47,7 @@ export function CategoriesManager({
   const [nameEn, setNameEn] = useState("");
   const [slug, setSlug] = useState("");
   const [slugAuto, setSlugAuto] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<Cat | null>(null);
 
   const dn = (c: Cat) => (locale === "el" ? c.name_el : c.name_en);
   const parents = categories
@@ -96,9 +98,9 @@ export function CategoriesManager({
   };
 
   const onDelete = (c: Cat) => {
-    if (!confirm(t.confirmDelete.replace("{name}", dn(c)))) return;
     startTransition(async () => {
       const res = await deleteCategory(locale, c.id);
+      setConfirmDelete(null);
       if (!res.ok) alert(adminErr(errs, res.error, errs.delete_failed));
       else router.refresh();
     });
@@ -123,7 +125,7 @@ export function CategoriesManager({
       </button>
       <button
         type="button"
-        onClick={() => onDelete(c)}
+        onClick={() => setConfirmDelete(c)}
         disabled={pending}
         title={t.delete}
         className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/15 hover:text-danger disabled:opacity-50"
@@ -266,6 +268,17 @@ export function CategoriesManager({
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t.delete}
+          message={t.confirmDelete.replace("{name}", dn(confirmDelete))}
+          danger
+          pending={pending}
+          onConfirm={() => onDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );

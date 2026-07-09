@@ -14,6 +14,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/i18n/provider";
@@ -72,6 +73,9 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
   const [tab, setTab] = useState<Tab>("upcoming");
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [confirming, setConfirming] = useState<
+    { kind: "cancel"; id: string } | { kind: "clear"; scope: "past" | "cancelled" } | null
+  >(null);
 
   // Captured once per mount (the list re-fetches on navigation/refresh anyway).
   // Reading Date.now() directly during render is impure; this keeps it stable.
@@ -128,16 +132,27 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
   };
 
   const clearScope = (scope: "past" | "cancelled") => {
-    const n = countFor(scope);
-    const msg = (
-      scope === "past" ? d.clearConfirmPast : d.clearConfirmCancelled
-    ).replace("{n}", String(n));
-    if (!confirm(msg)) return;
     // Optimistically drop matching rows
     setRows((prev) => prev.filter((b) => !matchesTab(b, scope)));
     startTransition(() => {
       void clearBookings(locale, scope);
     });
+  };
+
+  const confirmMessage = () => {
+    if (!confirming) return "";
+    if (confirming.kind === "cancel") return d.cancelConfirm;
+    const n = countFor(confirming.scope);
+    return (
+      confirming.scope === "past" ? d.clearConfirmPast : d.clearConfirmCancelled
+    ).replace("{n}", String(n));
+  };
+
+  const confirmAction = () => {
+    if (!confirming) return;
+    if (confirming.kind === "cancel") setStatus(confirming.id, "cancelled");
+    else clearScope(confirming.scope);
+    setConfirming(null);
   };
 
   const tabs: { key: Tab; label: string }[] = [
@@ -212,7 +227,7 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
           {/* Clear-history actions (past & cancelled tabs) */}
           {(tab === "past" || tab === "cancelled") && countFor(tab) > 0 && (
             <button
-              onClick={() => clearScope(tab)}
+              onClick={() => setConfirming({ kind: "clear", scope: tab })}
               disabled={isPending}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-danger/40 hover:bg-danger/10 hover:text-danger active:scale-95 disabled:opacity-50"
             >
@@ -317,10 +332,9 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
                           <UserX className="size-4" />
                         </ActionBtn>
                         <ActionBtn
-                          onClick={() => {
-                            if (confirm(d.cancelConfirm))
-                              setStatus(b.id, "cancelled");
-                          }}
+                          onClick={() =>
+                            setConfirming({ kind: "cancel", id: b.id })
+                          }
                           disabled={isPending}
                           title={d.cancel}
                           className="hover:bg-danger/10 hover:text-danger"
@@ -347,6 +361,17 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
             );
           })}
         </div>
+      )}
+
+      {confirming && (
+        <ConfirmDialog
+          title={confirming.kind === "cancel" ? d.cancel : d.clearTitle}
+          message={confirmMessage()}
+          danger
+          pending={isPending}
+          onConfirm={confirmAction}
+          onCancel={() => setConfirming(null)}
+        />
       )}
     </div>
   );

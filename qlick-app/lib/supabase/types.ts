@@ -604,6 +604,7 @@ export type Database = {
           phone: string | null
           phone_verified: boolean
           preferred_language: string
+          suspended_at: string | null
           updated_at: string
         }
         Insert: {
@@ -618,6 +619,7 @@ export type Database = {
           phone?: string | null
           phone_verified?: boolean
           preferred_language?: string
+          suspended_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -632,6 +634,7 @@ export type Database = {
           phone?: string | null
           phone_verified?: boolean
           preferred_language?: string
+          suspended_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1190,7 +1193,20 @@ export type Database = {
           last_name: string
           owns_business: boolean
           phone: string
+          suspended_at: string | null
         }[]
+      }
+      admin_business_details: { Args: { p_business: string }; Returns: Json }
+      admin_moderation_texts: {
+        Args: never
+        Returns: {
+          business_id: string
+          txt: string
+        }[]
+      }
+      admin_set_user_suspended: {
+        Args: { p_user: string; p_suspended: boolean }
+        Returns: undefined
       }
       admin_overview_stats: { Args: never; Returns: Json }
       admin_set_business_status: {

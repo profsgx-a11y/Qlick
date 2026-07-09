@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, ExternalLink, Ban, CheckCircle2, Trash2 } from "lucide-react";
+import {
+  Search,
+  ExternalLink,
+  Ban,
+  CheckCircle2,
+  Trash2,
+  AlertTriangle,
+  FileSearch,
+} from "lucide-react";
 import { useDict } from "@/i18n/provider";
 import { adminErr } from "@/lib/admin-error";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { setBusinessStatus, deleteBusiness } from "./actions";
 
 interface BizRow {
@@ -31,15 +41,20 @@ const norm = (s: string) =>
 export function BusinessesTable({
   locale,
   rows,
+  flags = {},
 }: {
   locale: string;
   rows: BizRow[];
+  flags?: Record<string, string[]>;
 }) {
   const t = useDict().admin.businesses;
   const errs = useDict().admin.errors;
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState<BizRow | null>(null);
+  // Captured once per mount; reading Date.now() during render is impure.
+  const [now] = useState(() => Date.now());
 
   const q = norm(query.trim());
   const filtered = !q
@@ -113,6 +128,7 @@ export function BusinessesTable({
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     startTransition(async () => {
       const res = await fn();
+      setConfirmDelete(null);
       if (!res.ok) alert(adminErr(errs, res.error, errs.generic));
       else router.refresh();
     });
@@ -122,10 +138,9 @@ export function BusinessesTable({
       setBusinessStatus(locale, r.id, r.status === "active" ? "suspended" : "active"),
     );
 
-  const onDelete = (r: BizRow) => {
-    if (!confirm(t.confirmDelete.replace("{name}", r.name))) return;
-    run(() => deleteBusiness(locale, r.id));
-  };
+  // "New" = registered within the last 7 days, so fresh stores stand out for review.
+  const isNew = (r: BizRow) =>
+    now - new Date(r.created_at).getTime() < 7 * 86_400_000;
 
   return (
     <div className="space-y-4">
@@ -165,7 +180,24 @@ export function BusinessesTable({
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-border last:border-0">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground">{r.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-foreground">{r.name}</p>
+                      {flags[r.id] && (
+                        <span
+                          title={t.flaggedTooltip.replace(
+                            "{words}",
+                            flags[r.id].join(", "),
+                          )}
+                        >
+                          <AlertTriangle className="size-4 shrink-0 text-warning" />
+                        </span>
+                      )}
+                      {isNew(r) && (
+                        <span className="inline-flex rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold">
+                          {t.badgeNew}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-2">/{r.slug}</p>
                   </td>
                   <td className="px-4 py-3">
@@ -187,6 +219,13 @@ export function BusinessesTable({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/${locale}/admin/businesses/${r.id}`}
+                        title={t.actionReview}
+                        className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                      >
+                        <FileSearch className="size-4" />
+                      </Link>
                       <a
                         href={`/${locale}/b/${r.slug}`}
                         target="_blank"
@@ -211,7 +250,7 @@ export function BusinessesTable({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onDelete(r)}
+                        onClick={() => setConfirmDelete(r)}
                         disabled={pending}
                         title={t.actionDelete}
                         className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/15 hover:text-danger disabled:opacity-50"
@@ -225,6 +264,17 @@ export function BusinessesTable({
             </tbody>
           </table>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t.actionDelete}
+          message={t.confirmDelete.replace("{name}", confirmDelete.name)}
+          danger
+          pending={pending}
+          onConfirm={() => run(() => deleteBusiness(locale, confirmDelete.id))}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );

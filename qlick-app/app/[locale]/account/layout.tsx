@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Store, LogOut } from "lucide-react";
+import { Store, LogOut, Ban } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { AccountNav, AccountMenuButton } from "@/components/account/account-nav";
@@ -30,12 +30,13 @@ export default async function AccountLayout({
   const [{ data: profile }, { data: myBiz }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("first_name, last_name")
+      .select("first_name, last_name, suspended_at")
       .eq("id", user.id)
       .maybeSingle(),
     supabase.from("my_businesses").select("id").limit(1),
   ]);
   const ownsBusiness = (myBiz?.length ?? 0) > 0;
+  const suspended = Boolean(profile?.suspended_at);
 
   return (
     <MobileNavProvider>
@@ -77,6 +78,32 @@ export default async function AccountLayout({
 
       <Container size="lg">
         <div className="py-10">
+          {suspended && (
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-danger/40 bg-danger/10 p-4">
+              <Ban className="mt-0.5 size-5 shrink-0 text-danger" />
+              <div className="text-sm">
+                <p className="font-semibold text-foreground">
+                  {t.suspendedTitle}
+                </p>
+                <p className="mt-1 leading-relaxed text-muted">
+                  {t.suspendedBody}{" "}
+                  <Link
+                    href={`/${locale}/terms`}
+                    className="font-medium text-gold hover:underline"
+                  >
+                    {t.suspendedTermsLink}
+                  </Link>{" "}
+                  ·{" "}
+                  <a
+                    href="mailto:info@qlick.gr"
+                    className="font-medium text-gold hover:underline"
+                  >
+                    info@qlick.gr
+                  </a>
+                </p>
+              </div>
+            </div>
+          )}
           {/* On mobile the title lives in the AccountNav topbar-style row
               (hamburger + section). Keep the big heading for desktop only. */}
           <h1 className="mb-6 hidden font-display text-3xl font-bold tracking-tight text-foreground md:block">

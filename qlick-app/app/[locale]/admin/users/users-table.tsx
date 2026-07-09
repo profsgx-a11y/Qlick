@@ -2,10 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Trash2, ShieldCheck, Store } from "lucide-react";
+import { Search, Trash2, ShieldCheck, Store, Ban, CheckCircle2, Mail } from "lucide-react";
 import { useDict } from "@/i18n/provider";
 import { adminErr } from "@/lib/admin-error";
-import { deleteUser } from "./actions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  EmailTemplateModal,
+  type EmailTemplateTarget,
+} from "@/components/admin/email-template-modal";
+import { deleteUser, setUserSuspended } from "./actions";
 
 interface UserRow {
   id: string;
@@ -18,6 +23,7 @@ interface UserRow {
   owns_business: boolean;
   bookings_count: number;
   created_at: string;
+  suspended_at: string | null;
 }
 
 const norm = (s: string) =>
@@ -35,6 +41,10 @@ export function UsersTable({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
+  const [confirmFor, setConfirmFor] = useState<
+    { row: UserRow; action: "delete" | "suspend" } | null
+  >(null);
+  const [emailTarget, setEmailTarget] = useState<EmailTemplateTarget | null>(null);
 
   const fullName = (r: UserRow) =>
     [r.first_name, r.last_name].map((s) => s?.trim()).filter(Boolean).join(" ");
@@ -51,15 +61,32 @@ export function UsersTable({
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString(locale === "el" ? "el-GR" : "en-GB");
 
-  const onDelete = (r: UserRow) => {
-    const label = fullName(r) || r.email || t.noName;
-    if (!confirm(t.confirmDelete.replace("{name}", label))) return;
+  const run = (fn: () => Promise<{ ok: boolean; error?: string }>) =>
     startTransition(async () => {
-      const res = await deleteUser(locale, r.id);
+      const res = await fn();
+      setConfirmFor(null);
       if (!res.ok) alert(adminErr(errs, res.error, errs.generic));
       else router.refresh();
     });
+
+  const confirmProps = () => {
+    if (!confirmFor) return null;
+    const { row, action } = confirmFor;
+    const label = fullName(row) || row.email || t.noName;
+    if (action === "delete") {
+      return {
+        title: t.actionDelete,
+        message: t.confirmDelete.replace("{name}", label),
+        onConfirm: () => run(() => deleteUser(locale, row.id)),
+      };
+    }
+    return {
+      title: t.actionSuspend,
+      message: t.confirmSuspend.replace("{name}", label),
+      onConfirm: () => run(() => setUserSuspended(locale, row.id, true)),
+    };
   };
+  const cp = confirmProps();
 
   return (
     <div className="space-y-4">
@@ -97,6 +124,7 @@ export function UsersTable({
                 const blockedTitle = r.is_admin
                   ? errs.cannot_delete_admin
                   : errs.user_owns_business;
+                const suspended = r.suspended_at !== null;
                 return (
                   <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium text-foreground">
@@ -122,6 +150,12 @@ export function UsersTable({
                             {t.badgeOwner}
                           </span>
                         )}
+                        {suspended && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-medium text-danger">
+                            <Ban className="size-3" />
+                            {t.badgeSuspended}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted">{r.phone || "—"}</td>
@@ -130,10 +164,48 @@ export function UsersTable({
                       {fmtDate(r.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-1">
+                        {r.email && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEmailTarget({
+                                email: r.email!,
+                                name: fullName(r) || null,
+                              })
+                            }
+                            title={t.actionEmail}
+                            className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground"
+                          >
+                            <Mail className="size-4" />
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => onDelete(r)}
+                          onClick={() =>
+                            suspended
+                              ? run(() => setUserSuspended(locale, r.id, false))
+                              : setConfirmFor({ row: r, action: "suspend" })
+                          }
+                          disabled={pending || r.is_admin}
+                          title={
+                            r.is_admin
+                              ? errs.cannot_suspend_admin
+                              : suspended
+                                ? t.actionUnsuspend
+                                : t.actionSuspend
+                          }
+                          className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
+                        >
+                          {suspended ? (
+                            <CheckCircle2 className="size-4 text-success" />
+                          ) : (
+                            <Ban className="size-4 text-warning" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmFor({ row: r, action: "delete" })}
                           disabled={pending || blocked}
                           title={blocked ? blockedTitle : t.actionDelete}
                           className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-danger/15 hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted"
@@ -148,6 +220,20 @@ export function UsersTable({
             </tbody>
           </table>
         </div>
+      )}
+
+      {cp && (
+        <ConfirmDialog
+          title={cp.title}
+          message={cp.message}
+          danger
+          pending={pending}
+          onConfirm={cp.onConfirm}
+          onCancel={() => setConfirmFor(null)}
+        />
+      )}
+      {emailTarget && (
+        <EmailTemplateModal target={emailTarget} onClose={() => setEmailTarget(null)} />
       )}
     </div>
   );

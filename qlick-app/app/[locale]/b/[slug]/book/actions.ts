@@ -237,6 +237,8 @@ export async function submitBooking(params: {
       return { ok: false, error: "bookings_paused" };
     if (msg.includes("email_not_confirmed"))
       return { ok: false, error: "email_not_confirmed" };
+    if (msg.includes("account_suspended"))
+      return { ok: false, error: "account_suspended" };
     if (msg.includes("too_many_active_bookings"))
       return { ok: false, error: "too_many_active" };
     if (msg.includes("customer_time_conflict"))

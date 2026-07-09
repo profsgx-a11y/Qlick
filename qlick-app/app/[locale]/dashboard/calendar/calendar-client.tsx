@@ -507,10 +507,9 @@ export function CalendarClient({
   });
   const [newErr, setNewErr] = useState<string | null>(null);
 
-  const servicesForStaff = (staffId: string | null) =>
-    staffId
-      ? services.filter((s) => (staffServices[staffId] ?? []).includes(s.id))
-      : services;
+  // Manual bookings are the owner's call: the dialog always offers ALL active
+  // services, regardless of staff_services assignments (those only constrain
+  // what customers can book online).
 
   const changeStatus = (
     id: string,
@@ -559,13 +558,11 @@ export function CalendarClient({
     m = Math.round(m / SNAP_MIN) * SNAP_MIN;
     m = Math.max(win.startMin, Math.min(m, win.endMin - SNAP_MIN));
     const defaultStaff = col.staffId ?? UNASSIGNED;
-    const sid = col.staffId;
-    const avail = servicesForStaff(sid);
     setNewErr(null);
     setNewSlot({ dateStr: col.dateStr, startMin: m });
     setNewForm({
       staffId: defaultStaff,
-      serviceId: avail[0]?.id ?? "",
+      serviceId: services[0]?.id ?? "",
       name: "",
       phone: "",
       notes: "",
@@ -1728,9 +1725,7 @@ export function CalendarClient({
       {/* New booking modal */}
       {newSlot &&
         (() => {
-          const sid =
-            newForm.staffId === UNASSIGNED ? null : newForm.staffId;
-          const avail = servicesForStaff(sid);
+          const avail = services;
           const svc = services.find((s) => s.id === newForm.serviceId);
           const [hh, mm] = newForm.time.split(":").map(Number);
           const endMin =
@@ -1772,18 +1767,9 @@ export function CalendarClient({
                     {t.person}
                     <SelectMenu
                       value={newForm.staffId}
-                      onChange={(v) => {
-                        const a = servicesForStaff(
-                          v === UNASSIGNED ? null : v,
-                        );
-                        setNewForm((f) => ({
-                          ...f,
-                          staffId: v,
-                          serviceId: a.some((s) => s.id === f.serviceId)
-                            ? f.serviceId
-                            : (a[0]?.id ?? ""),
-                        }));
-                      }}
+                      onChange={(v) =>
+                        setNewForm((f) => ({ ...f, staffId: v }))
+                      }
                       disabled={isPending}
                       className="mt-1"
                       options={[

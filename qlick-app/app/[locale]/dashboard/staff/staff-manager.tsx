@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
@@ -92,6 +93,7 @@ export function StaffManager({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState<StaffRow | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const openAdd = () => {
@@ -227,7 +229,7 @@ export function StaffManager({
   };
 
   const onDelete = (m: StaffRow) => {
-    if (!confirm(t.deleteConfirm.replace("{name}", m.name))) return;
+    setConfirmDelete(null);
     setStaff((prev) => prev.filter((x) => x.id !== m.id));
     startTransition(() => {
       void deleteStaff(locale, m.id);
@@ -511,7 +513,7 @@ export function StaffManager({
                   <Pencil className="size-4" />
                 </button>
                 <button
-                  onClick={() => onDelete(m)}
+                  onClick={() => setConfirmDelete(m)}
                   disabled={isPending}
                   className="grid size-9 place-items-center rounded-lg text-muted transition-[transform,background-color,color] duration-200 ease-[var(--ease-out)] hover:bg-danger/10 hover:text-danger active:scale-95"
                   aria-label={dd.delete}
@@ -522,6 +524,17 @@ export function StaffManager({
             </Card>
           ))}
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={dd.delete}
+          message={t.deleteConfirm.replace("{name}", confirmDelete.name)}
+          danger
+          pending={isPending}
+          onConfirm={() => onDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   );

@@ -238,6 +238,7 @@ export function BookingFlow({
           blocked: t.blocked,
           bookings_paused: t.bookingsPaused,
           email_not_confirmed: t.emailNotConfirmed,
+          account_suspended: t.accountSuspended,
           too_many_active: t.tooManyActive,
           customer_busy: t.customerBusy,
           failed: t.failed,
