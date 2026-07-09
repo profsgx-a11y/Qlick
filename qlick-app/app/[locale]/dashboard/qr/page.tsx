@@ -10,7 +10,10 @@ import {
 } from "@/lib/qr-template";
 import { QrEditorLoader } from "./qr-editor-loader";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://qlick.gr";
+// The QR is printed on a physical poster, so it must ALWAYS resolve to the live
+// site — never a localhost or preview origin. Pin the production domain here
+// instead of NEXT_PUBLIC_SITE_URL (which is http://localhost:3000 in dev).
+const SITE_URL = "https://qlick.gr";
 
 const DAY_UP = [
   "ΚΥΡΙΑΚΗ",
@@ -96,7 +99,14 @@ export default async function QrPage({
   const savedConfig = template?.config as unknown as QrDesign | null;
   const initialDesign =
     savedConfig && Array.isArray(savedConfig.elements) && savedConfig.elements.length
-      ? savedConfig
+      ? {
+          // Re-point any saved QR element to the current (production) booking
+          // URL, healing older posters that baked in a localhost/preview origin.
+          ...savedConfig,
+          elements: savedConfig.elements.map((el) =>
+            el.type === "qr" ? { ...el, data: qrUrl } : el,
+          ),
+        }
       : buildDefaultTemplate({
           name: business.name,
           bookingUrl: qrUrl,
