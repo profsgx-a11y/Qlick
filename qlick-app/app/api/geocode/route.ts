@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 // Proxy to OpenStreetMap Nominatim. Server-side so we can set a proper
 // User-Agent (required by their usage policy) and bias results to Greece.
@@ -15,6 +16,14 @@ export interface GeocodeResult {
 }
 
 export async function GET(request: NextRequest) {
+  const rl = rateLimit(request, { bucket: "geocode" });
+  if (!rl.ok) {
+    return NextResponse.json<{ results: GeocodeResult[] }>(
+      { results: [] },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
+
   const sp = request.nextUrl.searchParams;
   const q = sp.get("q")?.trim() ?? "";
   const kind = sp.get("kind") === "city" ? "city" : "address";

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 // Free business-data autofill via OpenStreetMap Nominatim (extratags give
 // phone / opening_hours / website when the POI is mapped). Server-side so we
@@ -20,6 +21,14 @@ export interface PlaceResult {
 }
 
 export async function GET(request: NextRequest) {
+  const rl = rateLimit(request, { bucket: "place-search" });
+  if (!rl.ok) {
+    return NextResponse.json<{ results: PlaceResult[] }>(
+      { results: [] },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
+
   const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
   if (q.length < 3) {
     return NextResponse.json<{ results: PlaceResult[] }>({ results: [] });

@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  const rl = rateLimit(request, { bucket: "reverse-geocode" });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { label: "" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } },
+    );
+  }
+
   const sp = request.nextUrl.searchParams;
   const lat = sp.get("lat")?.trim();
   const lng = sp.get("lng")?.trim();
