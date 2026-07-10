@@ -63,6 +63,47 @@ export type Database = {
           },
         ]
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_label: string | null
+          target_type: string | null
+        }
+        Insert: {
+          action: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_label?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_label?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           business_id: string
@@ -433,6 +474,7 @@ export type Database = {
           slug: string
           status: string
           timezone: string
+          trial_bonus_days: number
           updated_at: string
           website: string | null
         }
@@ -445,6 +487,7 @@ export type Database = {
           created_at?: string
           currency?: string
           day_order?: Json
+          deletion_scheduled_at?: string | null
           description?: string | null
           description_en?: string | null
           email?: string | null
@@ -465,6 +508,7 @@ export type Database = {
           slug: string
           status?: string
           timezone?: string
+          trial_bonus_days?: number
           updated_at?: string
           website?: string | null
         }
@@ -477,6 +521,7 @@ export type Database = {
           created_at?: string
           currency?: string
           day_order?: Json
+          deletion_scheduled_at?: string | null
           description?: string | null
           description_en?: string | null
           email?: string | null
@@ -497,6 +542,7 @@ export type Database = {
           slug?: string
           status?: string
           timezone?: string
+          trial_bonus_days?: number
           updated_at?: string
           website?: string | null
         }
@@ -1155,11 +1201,64 @@ export type Database = {
       }
     }
     Functions: {
+      admin_booking_stats: { Args: never; Returns: Json }
+      admin_business_details: { Args: { p_business: string }; Returns: Json }
+      admin_confirm_user_email: { Args: { p_user: string }; Returns: undefined }
       admin_delete_business: {
         Args: { p_business: string }
         Returns: undefined
       }
+      admin_delete_review: { Args: { p_review: string }; Returns: undefined }
       admin_delete_user: { Args: { p_user: string }; Returns: undefined }
+      admin_extend_trial: {
+        Args: { p_business: string; p_days: number }
+        Returns: undefined
+      }
+      admin_list_audit_log: {
+        Args: { p_limit?: number }
+        Returns: {
+          action: string
+          admin_email: string
+          admin_name: string
+          created_at: string
+          details: Json
+          id: string
+          target_id: string
+          target_label: string
+          target_type: string
+        }[]
+      }
+      admin_list_bookings: {
+        Args: {
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+          p_source?: string
+          p_status?: string
+          p_to?: string
+        }
+        Returns: {
+          business_id: string
+          business_name: string
+          business_slug: string
+          cancelled_by: string
+          created_at: string
+          customer_email: string
+          customer_id: string
+          customer_name: string
+          customer_phone: string
+          ends_at: string
+          id: string
+          price_cents: number
+          service_name: string
+          source: string
+          staff_name: string
+          starts_at: string
+          status: string
+          total_count: number
+        }[]
+      }
       admin_list_businesses: {
         Args: never
         Returns: {
@@ -1172,11 +1271,52 @@ export type Database = {
           owner_email: string
           owner_last_sign_in_at: string
           owner_name: string
+          plan: string
+          plan_expires_at: string
           published_at: string
           slug: string
           status: string
+          trial_bonus_days: number
           trial_days_left: number
           trial_state: string
+          trial_total_days: number
+        }[]
+      }
+      admin_list_reviews: {
+        Args: never
+        Returns: {
+          business_id: string
+          business_name: string
+          business_reply: string
+          business_slug: string
+          comment: string
+          created_at: string
+          customer_email: string
+          customer_id: string
+          customer_name: string
+          id: string
+          rating: number
+          staff_name: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      admin_list_subscriptions: {
+        Args: never
+        Returns: {
+          created_at: string
+          days_left: number
+          id: string
+          name: string
+          owner_email: string
+          owner_name: string
+          plan: string
+          plan_expires_at: string
+          published_at: string
+          slug: string
+          status: string
+          sub_state: string
+          trial_bonus_days: number
           trial_total_days: number
         }[]
       }
@@ -1187,16 +1327,27 @@ export type Database = {
           bookings_count: number
           created_at: string
           email: string
+          email_confirmed_at: string
           first_name: string
           id: string
           is_admin: boolean
           last_name: string
+          last_sign_in_at: string
           owns_business: boolean
           phone: string
-          suspended_at: string | null
+          suspended_at: string
         }[]
       }
-      admin_business_details: { Args: { p_business: string }; Returns: Json }
+      admin_log: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_target_id: string
+          p_target_label: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
       admin_moderation_texts: {
         Args: never
         Returns: {
@@ -1204,23 +1355,30 @@ export type Database = {
           txt: string
         }[]
       }
-      admin_set_user_suspended: {
-        Args: { p_user: string; p_suspended: boolean }
-        Returns: undefined
-      }
       admin_overview_stats: { Args: never; Returns: Json }
       admin_set_business_status: {
         Args: { p_business: string; p_status: string }
         Returns: undefined
       }
+      admin_set_review_status: {
+        Args: { p_review: string; p_status: string }
+        Returns: undefined
+      }
+      admin_set_user_suspended: {
+        Args: { p_suspended: boolean; p_user: string }
+        Returns: undefined
+      }
+      auth_email_confirmed: { Args: never; Returns: boolean }
       business_plan_active: {
         Args: { p_business_id: string }
         Returns: boolean
       }
       business_plan_state: { Args: { p_business_id: string }; Returns: Json }
       cancel_booking: { Args: { p_booking_id: string }; Returns: undefined }
-      schedule_business_deletion: { Args: { p_business: string }; Returns: string }
-      cancel_business_deletion: { Args: { p_business: string }; Returns: undefined }
+      cancel_business_deletion: {
+        Args: { p_business: string }
+        Returns: undefined
+      }
       create_booking: {
         Args: {
           p_business_id: string
@@ -1286,9 +1444,14 @@ export type Database = {
         Args: { p_business: string }
         Returns: undefined
       }
+      purge_scheduled_deletions: { Args: never; Returns: number }
       reschedule_booking: {
         Args: { p_booking_id: string; p_staff_id?: string; p_starts_at: string }
         Returns: undefined
+      }
+      schedule_business_deletion: {
+        Args: { p_business: string }
+        Returns: string
       }
       update_review: {
         Args: {

@@ -5,8 +5,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Store,
+  CalendarDays,
+  Star,
+  CreditCard,
   Users,
   FolderTree,
+  History,
   UserCog,
   ArrowLeft,
   X,
@@ -27,8 +31,12 @@ export function AdminSidebar({ locale }: { locale: string }) {
   const items = [
     { href: base, label: t.navOverview, icon: LayoutDashboard, exact: true },
     { href: `${base}/businesses`, label: t.navBusinesses, icon: Store },
+    { href: `${base}/bookings`, label: t.navBookings, icon: CalendarDays },
+    { href: `${base}/reviews`, label: t.navReviews, icon: Star },
+    { href: `${base}/subscriptions`, label: t.navSubscriptions, icon: CreditCard },
     { href: `${base}/users`, label: t.navUsers, icon: Users },
     { href: `${base}/categories`, label: t.navCategories, icon: FolderTree },
+    { href: `${base}/activity`, label: t.navActivity, icon: History },
     { href: `${base}/settings`, label: t.navAccount, icon: UserCog },
   ];
 

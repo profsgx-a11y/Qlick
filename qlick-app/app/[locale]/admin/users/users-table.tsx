@@ -2,7 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Trash2, ShieldCheck, Store, Ban, CheckCircle2, Mail } from "lucide-react";
+import {
+  Search,
+  Trash2,
+  ShieldCheck,
+  Store,
+  Ban,
+  CheckCircle2,
+  Mail,
+  MailCheck,
+  MailWarning,
+} from "lucide-react";
 import { useDict } from "@/i18n/provider";
 import { adminErr } from "@/lib/admin-error";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -10,7 +20,7 @@ import {
   EmailTemplateModal,
   type EmailTemplateTarget,
 } from "@/components/admin/email-template-modal";
-import { deleteUser, setUserSuspended } from "./actions";
+import { confirmUserEmail, deleteUser, setUserSuspended } from "./actions";
 
 interface UserRow {
   id: string;
@@ -24,6 +34,8 @@ interface UserRow {
   bookings_count: number;
   created_at: string;
   suspended_at: string | null;
+  email_confirmed_at: string | null;
+  last_sign_in_at: string | null;
 }
 
 const norm = (s: string) =>
@@ -42,7 +54,7 @@ export function UsersTable({
   const [query, setQuery] = useState("");
   const [pending, startTransition] = useTransition();
   const [confirmFor, setConfirmFor] = useState<
-    { row: UserRow; action: "delete" | "suspend" } | null
+    { row: UserRow; action: "delete" | "suspend" | "confirm_email" } | null
   >(null);
   const [emailTarget, setEmailTarget] = useState<EmailTemplateTarget | null>(null);
 
@@ -77,12 +89,22 @@ export function UsersTable({
       return {
         title: t.actionDelete,
         message: t.confirmDelete.replace("{name}", label),
+        danger: true,
         onConfirm: () => run(() => deleteUser(locale, row.id)),
+      };
+    }
+    if (action === "confirm_email") {
+      return {
+        title: t.actionConfirmEmail,
+        message: t.confirmConfirmEmail.replace("{name}", label),
+        danger: false,
+        onConfirm: () => run(() => confirmUserEmail(locale, row.id)),
       };
     }
     return {
       title: t.actionSuspend,
       message: t.confirmSuspend.replace("{name}", label),
+      danger: true,
       onConfirm: () => run(() => setUserSuspended(locale, row.id, true)),
     };
   };
@@ -106,7 +128,7 @@ export function UsersTable({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[800px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead>
               <tr className="border-b border-border bg-surface/60 text-left text-xs uppercase tracking-wider text-muted-2">
                 <th className="px-4 py-3 font-medium">{t.colName}</th>
@@ -115,6 +137,7 @@ export function UsersTable({
                 <th className="px-4 py-3 font-medium">{t.colPhone}</th>
                 <th className="px-4 py-3 text-right font-medium">{t.colBookings}</th>
                 <th className="px-4 py-3 font-medium">{t.colJoined}</th>
+                <th className="px-4 py-3 font-medium">{t.colLastSeen}</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
@@ -156,6 +179,12 @@ export function UsersTable({
                             {t.badgeSuspended}
                           </span>
                         )}
+                        {r.email && !r.email_confirmed_at && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
+                            <MailWarning className="size-3" />
+                            {t.badgeUnconfirmed}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted">{r.phone || "—"}</td>
@@ -163,8 +192,28 @@ export function UsersTable({
                     <td className="px-4 py-3 whitespace-nowrap text-muted">
                       {fmtDate(r.created_at)}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.last_sign_in_at ? (
+                        <span className="text-muted">{fmtDate(r.last_sign_in_at)}</span>
+                      ) : (
+                        <span className="text-xs text-muted-2">{t.lastSeenNever}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        {r.email && !r.email_confirmed_at && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirmFor({ row: r, action: "confirm_email" })
+                            }
+                            disabled={pending}
+                            title={t.actionConfirmEmail}
+                            className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+                          >
+                            <MailCheck className="size-4 text-success" />
+                          </button>
+                        )}
                         {r.email && (
                           <button
                             type="button"
@@ -226,7 +275,7 @@ export function UsersTable({
         <ConfirmDialog
           title={cp.title}
           message={cp.message}
-          danger
+          danger={cp.danger}
           pending={pending}
           onConfirm={cp.onConfirm}
           onCancel={() => setConfirmFor(null)}
