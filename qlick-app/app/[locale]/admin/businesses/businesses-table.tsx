@@ -33,6 +33,9 @@ interface BizRow {
   trial_days_left: number | null;
   trial_total_days: number;
   owner_last_sign_in_at: string | null;
+  plan: string;
+  plan_expires_at: string | null;
+  trial_bonus_days: number;
 }
 
 const norm = (s: string) =>
@@ -83,10 +86,25 @@ export function BusinessesTable({
   };
 
   const trialBadge = (r: BizRow) => {
+    if (r.trial_state === "paid") {
+      return (
+        <span className="inline-flex rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+          {t.trialPaid}
+        </span>
+      );
+    }
     if (r.trial_state === "trialing") {
       return (
-        <span className="inline-flex rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold">
+        <span
+          className="inline-flex rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold"
+          title={
+            r.trial_bonus_days > 0
+              ? t.bonusDays.replace("{n}", String(r.trial_bonus_days))
+              : undefined
+          }
+        >
           {t.trialLeft.replace("{n}", String(r.trial_days_left ?? 0))}
+          {r.trial_bonus_days > 0 && " ✦"}
         </span>
       );
     }

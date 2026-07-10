@@ -28,3 +28,16 @@ export async function deleteUser(
   revalidatePath(`/${locale}/admin/users`);
   return { ok: true };
 }
+
+export async function confirmUserEmail(
+  locale: string,
+  userId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_confirm_user_email", {
+    p_user: userId,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/${locale}/admin/users`);
+  return { ok: true };
+}
