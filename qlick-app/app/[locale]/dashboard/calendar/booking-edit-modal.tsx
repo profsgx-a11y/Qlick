@@ -45,7 +45,7 @@ interface Props {
 }
 
 const MIN_DURATION = 15;
-const STEP = 15;
+const STEP = 5;
 
 export function BookingEditModal({
   locale,
@@ -299,7 +299,7 @@ export function BookingEditModal({
                   }
                   disabled={duration <= MIN_DURATION}
                   className="flex size-12 items-center justify-center rounded-full border border-border text-foreground hover:border-gold hover:text-gold disabled:opacity-30"
-                  aria-label="-15"
+                  aria-label="-5"
                 >
                   <Minus className="size-5" />
                 </button>
@@ -311,7 +311,7 @@ export function BookingEditModal({
                 <button
                   onClick={() => setDuration((d) => d + STEP)}
                   className="flex size-12 items-center justify-center rounded-full border border-border text-foreground hover:border-gold hover:text-gold"
-                  aria-label="+15"
+                  aria-label="+5"
                 >
                   <Plus className="size-5" />
                 </button>

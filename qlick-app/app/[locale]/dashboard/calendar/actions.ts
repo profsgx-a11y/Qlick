@@ -262,7 +262,7 @@ export async function createWalkin(
       no_staff_preference: !input.staffId,
       customer_name: input.customerName.trim(),
       customer_phone: phone,
-      customer_notes: input.notes.trim() || null,
+      customer_notes: input.notes.trim().slice(0, 300) || null,
       price_cents: svc.price_cents,
       service_name: svc.name,
     })

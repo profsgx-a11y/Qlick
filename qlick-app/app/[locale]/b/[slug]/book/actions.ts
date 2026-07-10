@@ -226,7 +226,9 @@ export async function submitBooking(params: {
     p_starts_at: params.startsAtIso,
     p_customer_name: params.customerName,
     p_customer_phone: params.customerPhone,
-    p_notes: params.notes,
+    // Cap the note server-side too, so a tampered client can't store more than
+    // the form allows. Keep in sync with NOTE_MAX_LENGTH in booking-flow.tsx.
+    p_notes: params.notes.slice(0, 300),
     p_source: params.source === "qr" ? "qr" : "web",
   });
 
