@@ -34,6 +34,7 @@ import {
   Pause,
   Play,
   ShieldCheck,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
@@ -73,6 +74,10 @@ import {
   type OpenInterval,
 } from "@/lib/calendar";
 
+// Duration changes (dragging a booking's bottom edge) snap to 5-minute steps —
+// finer than the 15-minute grid used for placing/moving bookings.
+const RESIZE_SNAP_MIN = 5;
+const MIN_DURATION_MIN = 15;
 const STAFF_COL_WIDTH = 248;
 const RAIL_WIDTH = 56;
 const HEAD_HEIGHT = 56; // single header (day view)
@@ -614,6 +619,7 @@ export function CalendarClient({
           customerId: ownerUserId,
           customerName: newForm.name.trim(),
           customerPhone: res.customerPhone ?? null,
+          customerNotes: newForm.notes.trim() || null,
           noStaffPreference: !staffId,
           color: res.color ?? svc.color ?? null,
         },
@@ -726,8 +732,8 @@ export function CalendarClient({
     const endMinAt = (cy: number, r: NonNullable<typeof resizeRef.current>) => {
       const rect = r.body.getBoundingClientRect();
       let m = win.startMin + (cy - rect.top - TOP_PAD) / PX_PER_MIN;
-      m = Math.round(m / SNAP_MIN) * SNAP_MIN;
-      return Math.max(r.startMin + SNAP_MIN, Math.min(m, win.endMin));
+      m = Math.round(m / RESIZE_SNAP_MIN) * RESIZE_SNAP_MIN;
+      return Math.max(r.startMin + MIN_DURATION_MIN, Math.min(m, win.endMin));
     };
     const onMove = (e: PointerEvent) => {
       const r = resizeRef.current;
@@ -981,7 +987,16 @@ export function CalendarClient({
               ? Math.max((resizeState!.endMin - b.startMin) * PX_PER_MIN, 20)
               : b.heightPx;
             const endMinShown = resizing ? resizeState!.endMin : b.endMin;
+            // Density tiers keyed off the card's pixel height so text never clips
+            // mid-word. Each tier adds one line as height allows:
+            //   tiny     (<34px) → time range + name on ONE line
+            //   twoLine  (<48px) → time range, then name          (2 lines)
+            //   compact  (<64px) → + phone                        (3 lines)
+            //   full    (≥64px)  → + service                      (4 lines)
+            const tiny = heightPx < 34;
+            const twoLine = heightPx < 48;
             const compact = heightPx < 64;
+            const hasNote = !!b.customerNotes?.trim();
             return (
               <div
                 key={b.id}
@@ -1019,7 +1034,8 @@ export function CalendarClient({
                   setActive({ booking: b, x: e.clientX, y: e.clientY });
                 }}
                 className={cn(
-                  "absolute flex cursor-grab touch-manipulation select-none flex-col overflow-hidden rounded-lg border-l-2 px-2 py-1 text-[11px] leading-[1.2] shadow-sm transition-[filter,box-shadow] duration-150 ease-[var(--ease-out)] hover:z-10 hover:brightness-110 hover:shadow-md hover:ring-1 hover:ring-white/10 active:cursor-grabbing",
+                  "absolute flex cursor-grab touch-manipulation select-none flex-col overflow-hidden rounded-lg border-l-2 px-2 text-[11px] leading-[1.2] shadow-sm transition-[filter,box-shadow] duration-150 ease-[var(--ease-out)] hover:z-10 hover:brightness-110 hover:shadow-md hover:ring-1 hover:ring-white/10 active:cursor-grabbing",
+                  tiny ? "justify-center py-0" : compact ? "py-0.5" : "py-1",
                   b.status === "pending" && "border-dashed",
                   dragPreview?.booking.id === b.id &&
                     "opacity-30 ring-1 ring-gold/50",
@@ -1042,38 +1058,54 @@ export function CalendarClient({
                   .filter(Boolean)
                   .join(" · ")}
               >
-                <div className="flex items-center gap-1 truncate font-medium tabular-nums text-foreground">
-                  {b.status === "completed" && (
-                    <Check className="size-3 shrink-0 text-emerald-500" />
-                  )}
-                  {minLabel(b.startMin)}–{minLabel(endMinShown)}
-                </div>
-                {b.customerName && (
-                  <div className="truncate font-medium text-foreground/90">
-                    {b.customerName}
-                  </div>
-                )}
-                {compact ? (
-                  (b.customerPhone || b.serviceName) && (
-                    <div className="flex items-center gap-1 truncate text-muted">
-                      {b.customerPhone && <Phone className="size-3 shrink-0" />}
-                      <span className="truncate">
-                        {b.customerPhone}
-                        {b.customerPhone && b.serviceName && " · "}
-                        {b.serviceName}
+                {tiny ? (
+                  <div className="flex items-center gap-1 truncate font-medium leading-none text-foreground">
+                    {b.status === "completed" && (
+                      <Check className="size-3 shrink-0 text-emerald-500" />
+                    )}
+                    <span className="shrink-0 tabular-nums">
+                      {minLabel(b.startMin)}–{minLabel(endMinShown)}
+                    </span>
+                    {b.customerName && (
+                      <span className="truncate font-normal text-foreground/90">
+                        {b.customerName}
                       </span>
-                    </div>
-                  )
+                    )}
+                    {hasNote && (
+                      <StickyNote className="ml-auto size-3 shrink-0 text-gold/90" />
+                    )}
+                  </div>
                 ) : (
                   <>
-                    {b.customerPhone && (
-                      <div className="flex items-center gap-1 truncate text-muted">
+                    {/* Line 1: full time range (always). Then name, phone, and
+                        service are added one per line as the height allows, so
+                        nothing ever clips mid-line. */}
+                    <div className="flex items-center gap-1 truncate font-medium leading-tight tabular-nums text-foreground">
+                      {b.status === "completed" && (
+                        <Check className="size-3 shrink-0 text-emerald-500" />
+                      )}
+                      <span className="truncate">
+                        {minLabel(b.startMin)}–{minLabel(endMinShown)}
+                      </span>
+                      {hasNote && (
+                        <StickyNote className="ml-auto size-3 shrink-0 text-gold/90" />
+                      )}
+                    </div>
+                    {b.customerName && (
+                      <div className="truncate font-medium leading-tight text-foreground/90">
+                        {b.customerName}
+                      </div>
+                    )}
+                    {!twoLine && b.customerPhone && (
+                      <div className="flex items-center gap-1 truncate leading-tight text-muted">
                         <Phone className="size-3 shrink-0" />
                         <span className="truncate">{b.customerPhone}</span>
                       </div>
                     )}
-                    {b.serviceName && (
-                      <div className="truncate text-muted">{b.serviceName}</div>
+                    {!compact && b.serviceName && (
+                      <div className="truncate leading-tight text-muted">
+                        {b.serviceName}
+                      </div>
                     )}
                   </>
                 )}
@@ -1591,6 +1623,17 @@ export function CalendarClient({
                       {t.noPreference}
                     </p>
                   )}
+                  {b.customerNotes?.trim() && (
+                    <div className="mt-1.5 rounded-lg bg-surface-2 px-2.5 py-2">
+                      <p className="mb-0.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+                        <StickyNote className="size-3.5 shrink-0 text-gold" />
+                        {t.customerNote}
+                      </p>
+                      <p className="whitespace-pre-wrap break-words text-[13px] text-foreground/90">
+                        {b.customerNotes}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {!isResolved && (
@@ -1855,8 +1898,12 @@ export function CalendarClient({
                     <input
                       value={newForm.notes}
                       onChange={(e) =>
-                        setNewForm({ ...newForm, notes: e.target.value })
+                        setNewForm({
+                          ...newForm,
+                          notes: e.target.value.slice(0, 300),
+                        })
                       }
+                      maxLength={300}
                       placeholder={t.notesPlaceholder}
                       disabled={isPending}
                       className={inputCls}

@@ -35,6 +35,7 @@ export interface CalBooking {
   customerId: string | null;
   customerName: string | null;
   customerPhone: string | null;
+  customerNotes: string | null; // free-text comment the customer left when booking
   noStaffPreference: boolean; // customer didn't request a specific person
   color: string | null; // service color (fallback handled by UI)
 }

@@ -1,7 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Search, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Search,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  StickyNote,
+  X,
+} from "lucide-react";
 import { useDict } from "@/i18n/provider";
 
 export const BOOKINGS_PAGE_SIZE = 50;
@@ -24,6 +32,7 @@ interface BookingRow {
   business_name: string;
   business_slug: string;
   cancelled_by: string | null;
+  customer_notes: string | null;
   total_count: number;
 }
 
@@ -48,6 +57,8 @@ export function BookingsExplorer({
 }) {
   const t = useDict().admin.bookings;
   const base = `/${locale}/admin/bookings`;
+  // Booking whose full customer note is shown in a popup (null = closed).
+  const [noteRow, setNoteRow] = useState<BookingRow | null>(null);
   const total = rows[0]?.total_count ?? 0;
   const lastPage = Math.max(1, Math.ceil(total / BOOKINGS_PAGE_SIZE));
 
@@ -186,7 +197,7 @@ export function BookingsExplorer({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className="w-full min-w-[1180px] text-sm">
             <thead>
               <tr className="border-b border-border bg-surface/60 text-left text-xs uppercase tracking-wider text-muted-2">
                 <th className="px-4 py-3 font-medium">{t.colWhen}</th>
@@ -197,6 +208,7 @@ export function BookingsExplorer({
                 <th className="px-4 py-3 text-right font-medium">{t.colPrice}</th>
                 <th className="px-4 py-3 font-medium">{t.colSource}</th>
                 <th className="px-4 py-3 font-medium">{t.colStatus}</th>
+                <th className="px-4 py-3 text-center font-medium">{t.colNote}</th>
                 <th className="px-4 py-3 font-medium">{t.colBooked}</th>
               </tr>
             </thead>
@@ -242,6 +254,21 @@ export function BookingsExplorer({
                       <p className="mt-0.5 text-[11px] text-muted-2">
                         {cancelledBy[r.cancelled_by] ?? r.cancelled_by}
                       </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {r.customer_notes?.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => setNoteRow(r)}
+                        title={t.viewNote}
+                        aria-label={t.viewNote}
+                        className="inline-flex size-8 items-center justify-center rounded-lg text-gold transition-colors hover:bg-gold/10"
+                      >
+                        <StickyNote className="size-4" />
+                      </button>
+                    ) : (
+                      <span className="text-muted-2">—</span>
                     )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-muted">
@@ -293,6 +320,42 @@ export function BookingsExplorer({
             )}
           </div>
         </div>
+      )}
+
+      {/* Customer note popup */}
+      {noteRow && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => setNoteRow(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-50 w-[420px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-1.5 font-display text-base font-bold text-foreground">
+                  <StickyNote className="size-4 text-gold" />
+                  {t.noteTitle}
+                </h3>
+                <p className="mt-0.5 text-xs text-muted">
+                  {[noteRow.customer_name, fmtDateTime(noteRow.starts_at)]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNoteRow(null)}
+                className="text-muted hover:text-foreground"
+                aria-label={t.noteClose}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap break-words rounded-lg bg-surface-2 px-3 py-2.5 text-sm text-foreground/90">
+              {noteRow.customer_notes}
+            </p>
+          </div>
+        </>
       )}
     </div>
   );

@@ -62,6 +62,10 @@ interface Props {
 
 type Step = "service" | "staff" | "datetime" | "auth" | "confirm" | "done";
 
+// Max length of the customer's free-text note. Kept in sync with the server-side
+// cap in ./actions.ts (submitBooking).
+const NOTE_MAX_LENGTH = 300;
+
 function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -636,10 +640,16 @@ export function BookingFlow({
               <Textarea
                 id="bk-notes"
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) =>
+                  setNotes(e.target.value.slice(0, NOTE_MAX_LENGTH))
+                }
+                maxLength={NOTE_MAX_LENGTH}
                 placeholder={t.notePlaceholder}
                 disabled={isPending}
               />
+              <p className="mt-1 text-right text-xs text-muted">
+                {notes.length}/{NOTE_MAX_LENGTH}
+              </p>
             </Field>
 
             {error && (

@@ -87,7 +87,7 @@ export default async function CalendarPage({
     supabase
       .from("bookings")
       .select(
-        "id, starts_at, ends_at, staff_id, status, service_id, service_name, customer_id, customer_name, customer_phone, no_staff_preference, service:services(color)",
+        "id, starts_at, ends_at, staff_id, status, service_id, service_name, customer_id, customer_name, customer_phone, customer_notes, no_staff_preference, service:services(color)",
       )
       .eq("business_id", business.id)
       // Cancelled bookings stay only in the bookings list, not on the calendar.
@@ -122,6 +122,7 @@ export default async function CalendarPage({
     customerId: b.customer_id,
     customerName: b.customer_name,
     customerPhone: b.customer_phone,
+    customerNotes: b.customer_notes,
     noStaffPreference: b.no_staff_preference,
     color: (b.service as { color: string | null } | null)?.color ?? null,
   }));

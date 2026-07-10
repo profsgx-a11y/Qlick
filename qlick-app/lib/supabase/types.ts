@@ -1247,6 +1247,7 @@ export type Database = {
           customer_email: string
           customer_id: string
           customer_name: string
+          customer_notes: string
           customer_phone: string
           ends_at: string
           id: string
