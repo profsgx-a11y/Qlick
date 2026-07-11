@@ -756,6 +756,7 @@
     "pickArea": "Choose an area from the list.",
     "newest": "New on Qlick",
     "book": "Book",
+    "viewShop": "View shop",
     "emptyPrompt": "Choose an area (and optionally a service type) to see businesses near you.",
     "noResults": "No businesses found in this area",
     "noResultsForType": " for the selected type",
