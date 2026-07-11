@@ -24,17 +24,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const dict = await getDictionary(hasLocale(locale) ? locale : "el");
-  const canonical = `/${locale}/demo`;
+  const canonical = `/${locale}/tour`;
   return {
-    title: dict.demo.metaTitle,
-    description: dict.demo.metaDescription,
+    title: dict.tour.metaTitle,
+    description: dict.tour.metaDescription,
     alternates: {
       canonical,
-      languages: { el: "/el/demo", en: "/en/demo", "x-default": "/el/demo" },
+      languages: { el: "/el/tour", en: "/en/tour", "x-default": "/el/tour" },
     },
     openGraph: {
-      title: dict.demo.metaTitle,
-      description: dict.demo.metaDescription,
+      title: dict.tour.metaTitle,
+      description: dict.tour.metaDescription,
       type: "website",
       url: canonical,
     },
@@ -67,7 +67,7 @@ export default async function DemoTourPage({
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const d = dict.demo;
+  const d = dict.tour;
 
   return (
     <div className="min-h-screen">

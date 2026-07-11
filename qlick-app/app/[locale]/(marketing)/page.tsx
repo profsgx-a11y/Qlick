@@ -179,7 +179,7 @@ export default async function LandingPage({
                     </Button>
                   </Magnetic>
                   <Button asChild variant="secondary" size="xl">
-                    <Link href={`/${locale}/demo`}>{dict.hero.demoCta}</Link>
+                    <Link href={`/${locale}/tour`}>{dict.hero.demoCta}</Link>
                   </Button>
                 </div>
               </Reveal>
