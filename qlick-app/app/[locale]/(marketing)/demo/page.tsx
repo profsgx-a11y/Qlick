@@ -354,7 +354,9 @@ function PhoneShot({
         aria-hidden
         className="absolute -inset-6 -z-10 rounded-[48px] bg-gold/10 blur-2xl"
       />
-      <div className="overflow-hidden rounded-[2.2rem] border-[6px] border-surface-2 bg-surface shadow-2xl shadow-black/60 ring-1 ring-gold/15">
+      <div className="overflow-hidden rounded-[2.2rem] border-[6px] border-surface-2 bg-background shadow-2xl shadow-black/60 ring-1 ring-gold/15">
+        {/* status-bar spacer so the rounded corners don't clip the page's top nav */}
+        <div aria-hidden className="h-6 bg-background" />
         <Image
           src={src}
           width={width}

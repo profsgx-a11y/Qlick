@@ -29,7 +29,7 @@ export async function Header({ locale, dict }: HeaderProps) {
   }
 
   const navItems = [
-    { href: `/${locale}#features`, label: dict.nav.features },
+    { href: `/${locale}/demo`, label: dict.nav.features },
     { href: `/${locale}#pricing`, label: dict.nav.pricing },
     { href: `/${locale}/for-business`, label: dict.nav.forBusiness },
     { href: `/${locale}/search`, label: dict.nav.findBusinesses },
