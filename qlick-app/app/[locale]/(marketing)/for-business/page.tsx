@@ -13,7 +13,7 @@ import {
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { Reveal, Magnetic } from "@/components/motion/primitives";
-import { CalendarVisual } from "@/components/marketing/calendar-visual";
+import { BrowserShot } from "@/components/marketing/screenshot-frame";
 import { getDictionary, hasLocale } from "@/i18n/config";
 import { pageMetadata } from "@/lib/seo";
 
@@ -226,7 +226,12 @@ export default async function ForBusinessPage({
             </div>
 
             <div className="flex justify-center lg:col-span-6 lg:justify-end lg:pr-6">
-              <CalendarVisual toast={dict.hero.toasts[0]} />
+              <BrowserShot
+                src="/tour/dash-calendar.png"
+                width={1440}
+                height={900}
+                alt={isEl ? "Το ημερολόγιο του Qlick" : "The Qlick calendar"}
+              />
             </div>
           </div>
         </Container>

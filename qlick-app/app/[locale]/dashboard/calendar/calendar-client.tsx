@@ -1467,9 +1467,11 @@ export function CalendarClient({
           <div className="flex max-h-full max-w-full overflow-clip rounded-b-2xl">
             <div className="overflow-auto">
               <div className="flex w-max">
-                {/* Hour rail */}
+                {/* Hour rail — z-40 so its dark background sits ABOVE the day
+                    band (z-30) too, covering the date headers of columns that
+                    scroll horizontally under it (no gold peeking on the left). */}
             <div
-              className="sticky left-0 z-30 shrink-0 bg-background"
+              className="sticky left-0 z-40 shrink-0 bg-background"
               style={{ width: RAIL_WIDTH }}
             >
               <div
