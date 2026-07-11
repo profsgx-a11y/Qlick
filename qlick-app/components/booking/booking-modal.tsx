@@ -61,11 +61,16 @@ export function BookingModal({
           onClick={() => setOpen(false)}
         >
           <div
-            className="animate-pop flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-border bg-background shadow-2xl sm:max-h-[90vh] sm:rounded-3xl"
+            className="animate-pop flex h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-border bg-background shadow-2xl sm:h-auto sm:max-h-[90vh] sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Grab handle — mobile bottom-sheet affordance */}
+            <div className="flex shrink-0 justify-center pt-3 sm:hidden">
+              <span className="h-1.5 w-10 rounded-full bg-border" />
+            </div>
+
             {/* Modal chrome: business name + close */}
-            <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4">
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border px-5 pb-4 pt-3 sm:pt-4">
               <p className="truncate font-display text-base font-bold text-foreground">
                 {flowProps.business.name}
               </p>
@@ -80,7 +85,7 @@ export function BookingModal({
             </div>
 
             {/* Scrollable booking flow */}
-            <div className="flex-1 overflow-y-auto overscroll-contain">
+            <div className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
               <BookingFlow {...flowProps} embedded />
             </div>
           </div>
