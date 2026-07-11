@@ -392,6 +392,7 @@
     ],
     "primaryCta": "Start free",
     "secondaryCta": "See how it works",
+    "demoCta": "See a live example",
     "trialNote": "3 months free for the first 1,000 businesses · no credit card",
     "qrCardTitle": "Why put the QR on my door?",
     "qrCardBody": "It's the fastest way to show customers they can book online — anytime, even when you're closed.",
@@ -633,6 +634,43 @@
     "anonymous": "Anonymous",
     "businessReply": "Business reply",
     "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  },
+  "demo": {
+    "metaTitle": "Live example storefront · Qlick",
+    "metaDescription": "See what a Qlick page looks like and how your customer books — a live example.",
+    "ribbon": "Example",
+    "ribbonNote": "Sample business — this is how a Qlick page looks to your customers.",
+    "reviewsCount": "{count} reviews",
+    "ctaTitle": "Want your own page like this?",
+    "ctaBody": "Ready in minutes, with your own QR poster. No developer, no setup cost.",
+    "ctaButton": "Start for free",
+    "previewTitle": "This is how your customer books",
+    "previewSubtitle": "In 4 simple steps, no app and no phone calls.",
+    "previewClose": "Close",
+    "previewNext": "Next",
+    "previewBack": "Back",
+    "previewCtaNote": "This is just a preview — no real appointment is booked.",
+    "previewSteps": [
+      { "label": "Service", "title": "Picks a service", "body": "The customer sees your services with price and duration." },
+      { "label": "Staff", "title": "Picks a person", "body": "Chooses the staff member they want, or \"anyone available\"." },
+      { "label": "Time", "title": "Picks a time", "body": "Sees only the genuinely available slots, live." },
+      { "label": "Confirm", "title": "Confirms", "body": "Enters their name and the booking lands straight in your calendar." }
+    ]
+  },
+  "compare": {
+    "eyebrow": "What you save",
+    "title": "Why not just build it myself?",
+    "subtitle": "Because it's not just a page — it's the system running behind it, and we run it for you.",
+    "diyLabel": "On your own",
+    "qlickLabel": "With Qlick",
+    "rows": [
+      { "topic": "Setup", "diy": "Weeks of work or a developer", "qlick": "Ready in minutes" },
+      { "topic": "Cost", "diy": "Development, hosting & maintenance", "qlick": "€9/month — we run it" },
+      { "topic": "Bookings", "diy": "Paper diary & missed phone calls", "qlick": "Online bookings 24/7 with QR" },
+      { "topic": "Updates", "diy": "You build each one yourself", "qlick": "New features automatically" },
+      { "topic": "Security & backups", "diy": "Your responsibility", "qlick": "We take care of it" }
+    ],
+    "footnote": "No commission on bookings. What you book is yours."
   },
   "booking": {
     "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
