@@ -58,6 +58,9 @@ interface Props {
   defaultName: string;
   defaultPhone: string;
   source: string;
+  // When rendered inside the store-page modal we drop the standalone header
+  // (the modal supplies its own chrome + close button) and trim outer padding.
+  embedded?: boolean;
 }
 
 type Step = "service" | "staff" | "datetime" | "auth" | "confirm" | "done";
@@ -81,6 +84,7 @@ export function BookingFlow({
   defaultName,
   defaultPhone,
   source,
+  embedded = false,
 }: Props) {
   const t = useDict().booking;
 
@@ -270,19 +274,26 @@ export function BookingFlow({
   })();
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <Link href={`/${locale}/b/${business.slug}`} className="inline-flex">
-          <Logo />
-        </Link>
-        <Link
-          href={`/${locale}/b/${business.slug}`}
-          className="text-sm text-muted hover:text-foreground"
-        >
-          {business.name}
-        </Link>
-      </div>
+    <div
+      className={cn(
+        "mx-auto w-full max-w-2xl",
+        embedded ? "px-4 pb-8 pt-2" : "px-4 py-8",
+      )}
+    >
+      {/* Header — hidden when embedded in the store-page modal */}
+      {!embedded && (
+        <div className="mb-6 flex items-center justify-between">
+          <Link href={`/${locale}/b/${business.slug}`} className="inline-flex">
+            <Logo />
+          </Link>
+          <Link
+            href={`/${locale}/b/${business.slug}`}
+            className="text-sm text-muted hover:text-foreground"
+          >
+            {business.name}
+          </Link>
+        </div>
+      )}
 
       {step !== "done" && (
         <StepBar step={step} authed={authed} showStaff={showStaffStep} />

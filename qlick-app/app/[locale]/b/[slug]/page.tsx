@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   MapPin,
   Phone,
   Clock,
-  ArrowRight,
   Scissors,
   Star,
   Tag,
@@ -13,6 +11,7 @@ import {
 import { Container } from "@/components/ui/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FavoriteButton } from "@/components/account/favorite-button";
+import { BookingModal } from "@/components/booking/booking-modal";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { formatPrice, formatDuration } from "@/lib/format";
@@ -75,7 +74,7 @@ export default async function PublicBusinessPage({
   const dict = await getDictionary(locale);
   const t = dict.shop;
   // Carry a QR origin marker through to the booking flow (for source attribution).
-  const bookQuery = (await searchParams).src === "qr" ? "?src=qr" : "";
+  const src = (await searchParams).src === "qr" ? "qr" : "web";
 
   const supabase = await createClient();
   const { data: business } = await supabase
@@ -125,6 +124,74 @@ export default async function PublicBusinessPage({
       .eq("business_id", business.id)
       .order("day_of_week"),
   ]);
+
+  // ── Booking data for the in-page booking modal ──────────────────────────
+  // Mirrors what /b/[slug]/book/page.tsx loads, so the popup runs the exact
+  // same BookingFlow. Only fetched when bookings are open.
+  let bookableStaff: {
+    id: string;
+    name: string;
+    title: string | null;
+    avatarUrl: string | null;
+    color: string | null;
+  }[] = [];
+  const serviceStaff: Record<string, string[]> = {};
+  let defaultName = "";
+  let defaultPhone = "";
+  if (!bookingsPaused) {
+    const { data: staffOpts } = await supabase
+      .from("staff")
+      .select("id, name, title, avatar_url, color")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .eq("is_bookable", true)
+      .order("order_index")
+      .order("created_at");
+    bookableStaff = (staffOpts ?? []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      title: s.title,
+      avatarUrl: s.avatar_url,
+      color: s.color,
+    }));
+
+    const staffIds = bookableStaff.map((s) => s.id);
+    if (staffIds.length > 0) {
+      const { data: ssRows } = await supabase
+        .from("service_staff")
+        .select("service_id, staff_id")
+        .in("staff_id", staffIds);
+      for (const r of ssRows ?? []) {
+        (serviceStaff[r.service_id] ??= []).push(r.staff_id);
+      }
+    }
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+      defaultName =
+        [profile?.first_name, profile?.last_name]
+          .map((s) => s?.trim())
+          .filter(Boolean)
+          .join(" ") || "";
+      defaultPhone = profile?.phone ?? "";
+    }
+  }
+
+  const bookingModalProps = {
+    locale,
+    business: { id: business.id, name: business.name, slug: business.slug },
+    services: services ?? [],
+    staff: bookableStaff,
+    serviceStaff,
+    isAuthenticated: !!user,
+    defaultName,
+    defaultPhone,
+    source: src,
+  };
 
   const address = (business.address ?? {}) as {
     street?: string;
@@ -358,13 +425,11 @@ export default async function PublicBusinessPage({
               {/* primary action + social proof */}
               <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
                 {!bookingsPaused && (
-                  <Link
-                    href={`/${locale}/b/${slug}/book${bookQuery}`}
-                    className="inline-flex h-12 items-center gap-2 rounded-full bg-gold px-7 text-base font-semibold text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
-                  >
-                    {t.book}
-                    <ArrowRight className="size-4" />
-                  </Link>
+                  <BookingModal
+                    {...bookingModalProps}
+                    triggerLabel={t.book}
+                    triggerClassName="inline-flex h-12 items-center gap-2 rounded-full bg-gold px-7 text-base font-semibold text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
+                  />
                 )}
                 {showReviews && reviewCount > 0 && (
                   <a
@@ -433,13 +498,11 @@ export default async function PublicBusinessPage({
                         {t.bookingsPausedShort}
                       </span>
                     ) : (
-                      <Link
-                        href={`/${locale}/b/${slug}/book${bookQuery}`}
-                        className="hidden h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-5 text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97] sm:inline-flex"
-                      >
-                        {t.book}
-                        <ArrowRight className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
-                      </Link>
+                      <BookingModal
+                        {...bookingModalProps}
+                        triggerLabel={t.book}
+                        triggerClassName="hidden h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-5 text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97] sm:inline-flex"
+                      />
                     )}
                   </div>
 
@@ -449,13 +512,11 @@ export default async function PublicBusinessPage({
                       {t.bookingsPausedShort}
                     </span>
                   ) : (
-                    <Link
-                      href={`/${locale}/b/${slug}/book${bookQuery}`}
-                      className="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gold text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.98] sm:hidden"
-                    >
-                      {t.book}
-                      <ArrowRight className="size-4" />
-                    </Link>
+                    <BookingModal
+                      {...bookingModalProps}
+                      triggerLabel={t.book}
+                      triggerClassName="mt-4 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gold text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.98] sm:hidden"
+                    />
                   )}
                 </div>
               ))}

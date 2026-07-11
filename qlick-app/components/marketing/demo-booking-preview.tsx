@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { X, ArrowRight, ArrowLeft, Check, Clock, CalendarCheck } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/format";
@@ -52,7 +53,8 @@ export function DemoBookingPreview({
         <ArrowRight className="size-4" />
       </button>
 
-      {open && (
+      {open &&
+        createPortal(
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
           role="dialog"
@@ -60,7 +62,7 @@ export function DemoBookingPreview({
           onClick={close}
         >
           <div
-            className="animate-rise flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-border bg-surface shadow-2xl sm:rounded-3xl"
+            className="animate-pop flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-border bg-surface shadow-2xl sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header + stepper */}
@@ -259,8 +261,9 @@ export function DemoBookingPreview({
               )}
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </>
   );
 }
