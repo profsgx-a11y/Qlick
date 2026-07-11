@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  MapPin,
-  Phone,
-  Clock,
-  ArrowRight,
-  Scissors,
-  Star,
-  Tag,
   Sparkles,
+  QrCode,
+  Clock,
+  CalendarCheck,
+  Check,
+  ArrowRight,
+  BadgeEuro,
+  UserRound,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { DemoBookingPreview } from "@/components/marketing/demo-booking-preview";
+import { Button } from "@/components/ui/button";
+import { Reveal } from "@/components/motion/primitives";
 import { getDictionary, hasLocale } from "@/i18n/config";
-import { formatPrice, formatDuration } from "@/lib/format";
-import { demoShop } from "@/lib/demo-shop";
 
 export async function generateMetadata({
   params,
@@ -41,7 +41,25 @@ export async function generateMetadata({
   };
 }
 
-export default async function DemoStorefrontPage({
+// Real product screenshots (public/tour), one per demo.sections entry, in order.
+const SECTION_SHOTS: {
+  src: string;
+  width: number;
+  height: number;
+  frame: "phone" | "browser";
+}[] = [
+  { src: "/tour/store-mobile.png", width: 786, height: 1704, frame: "phone" },
+  { src: "/tour/booking-time.png", width: 393, height: 852, frame: "phone" },
+  { src: "/tour/dash-calendar.png", width: 1440, height: 900, frame: "browser" },
+  { src: "/tour/dash-qr.png", width: 1440, height: 900, frame: "browser" },
+  { src: "/tour/dash-bookings.png", width: 1440, height: 900, frame: "browser" },
+  { src: "/tour/dash-reviews.png", width: 1440, height: 900, frame: "browser" },
+  { src: "/tour/dash-reports.png", width: 1440, height: 900, frame: "browser" },
+];
+
+const LOOP_ICONS = [QrCode, Clock, CalendarCheck];
+
+export default async function DemoTourPage({
   params,
 }: {
   params: Promise<{ locale: string }>;
@@ -49,338 +67,303 @@ export default async function DemoStorefrontPage({
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
   const dict = await getDictionary(locale);
-  const t = dict.shop;
   const d = dict.demo;
-  const isEl = locale !== "en";
-
-  const description = isEl ? demoShop.description : demoShop.descriptionEn;
-  const addressLine = isEl ? demoShop.addressEl : demoShop.addressEn;
-
-  // Order hours Mon..Sun for display
-  const orderedDays = [1, 2, 3, 4, 5, 6, 0];
-  const hoursByDay = new Map(demoShop.hours.map((h) => [h.dayOfWeek, h]));
-
-  const fmtReviewDate = (daysAgo: number) => {
-    const dt = new Date();
-    dt.setDate(dt.getDate() - daysAgo);
-    return new Intl.DateTimeFormat(isEl ? "el-GR" : "en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(dt);
-  };
-
-  const reviewsCountLabel = d.reviewsCount.replace(
-    "{count}",
-    String(demoShop.ratingCount),
-  );
 
   return (
     <div className="min-h-screen">
-      {/* Demo ribbon — makes clear this is a sample, not a real shop */}
-      <div className="border-b border-gold/30 bg-gold/10">
-        <Container size="lg">
-          <p className="flex flex-wrap items-center justify-center gap-2 py-2.5 text-center text-sm text-gold">
-            <Sparkles className="size-4 shrink-0" />
-            <span className="font-semibold">{d.ribbon}</span>
-            <span className="text-gold/80">· {d.ribbonNote}</span>
-          </p>
-        </Container>
-      </div>
-
-      {/* Hero — branded cover placeholder + logo monogram */}
-      <section className="border-b border-border">
-        <div className="relative h-44 w-full overflow-hidden sm:h-60 md:h-64">
-          <div className="bg-gold-glow relative size-full">
-            <div className="bg-hero-grid absolute inset-0" />
-            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-background" />
-          </div>
-        </div>
-
-        <Container size="lg">
-          <div className="relative -mt-16 animate-rise pb-8 sm:-mt-20 md:pb-10">
-            <div className="flex items-end gap-10 lg:gap-14">
-              {/* Logo monogram — desktop */}
-              <div className="relative hidden shrink-0 md:block">
-                <div
-                  aria-hidden
-                  className="absolute -inset-6 -z-10 rounded-[36px] bg-gold/15 blur-2xl"
-                />
-                <div className="grid h-48 w-48 place-items-center rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 ring-1 ring-gold/20 lg:h-56 lg:w-56">
-                  <Scissors className="size-16 text-gold lg:size-20" />
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 flex-wrap items-end gap-x-5 gap-y-4">
-                  {/* Logo monogram — mobile */}
-                  <div className="grid size-24 shrink-0 place-items-center rounded-2xl border border-border bg-surface shadow-2xl shadow-black/60 ring-1 ring-gold/20 sm:size-28 md:hidden">
-                    <Scissors className="size-10 text-gold sm:size-12" />
-                  </div>
-                  <div className="min-w-0 flex-1 pb-1">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold backdrop-blur-sm [box-shadow:var(--glow-nav)]">
-                      <Scissors className="size-3" />
-                      {t.bookingBadge}
-                    </span>
-                    <h1 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-                      {demoShop.name}
-                    </h1>
-                  </div>
-                </div>
-
-                <p className="mt-4 max-w-2xl text-base text-muted md:text-lg">
-                  {description}
-                </p>
-
-                <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="size-4 text-gold" />
-                    {addressLine}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
-                    <Phone className="size-4 text-gold" />
-                    {demoShop.phone}
-                  </span>
-                </div>
-
-                <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <DemoBookingPreview
-                    locale={locale}
-                    triggerLabel={t.book}
-                    anyAvailableLabel={dict.booking.anyAvailable}
-                    dict={d}
-                    triggerClassName="inline-flex h-12 items-center gap-2 rounded-full bg-gold px-7 text-base font-semibold text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
-                  />
-                  <a
-                    href="#reviews"
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-4 py-2 backdrop-blur-sm transition-colors duration-200 hover:border-gold-soft"
-                  >
-                    <Stars rating={demoShop.ratingAvg} />
-                    <span className="text-sm font-semibold text-foreground">
-                      {demoShop.ratingAvg.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-muted">
-                      ({demoShop.ratingCount})
-                    </span>
-                  </a>
-                </div>
-              </div>
+      {/* ──────────── HERO ──────────── */}
+      <section className="bg-gold-glow relative overflow-hidden pt-14 pb-16 md:pt-20 md:pb-20">
+        <div className="bg-hero-grid pointer-events-none absolute inset-0" />
+        <Container size="lg" className="relative">
+          <Reveal className="mx-auto max-w-3xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-xs font-semibold text-gold [box-shadow:var(--glow-nav)]">
+              <Sparkles className="size-3.5" />
+              {d.eyebrow}
+            </span>
+            <h1 className="mt-6 font-display text-4xl font-extrabold leading-[1.08] tracking-tight text-foreground sm:text-5xl md:text-6xl">
+              {d.title}
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted md:text-xl">
+              {d.subtitle}
+            </p>
+            <div className="mt-9 flex flex-wrap justify-center gap-4">
+              <Button asChild size="xl">
+                <Link href={`/${locale}/signup/business`}>
+                  {d.ctaPrimary}
+                  <ArrowRight className="ml-1" />
+                </Link>
+              </Button>
+              <Button asChild variant="secondary" size="xl">
+                <Link href={`/${locale}/b/barber-house`}>{d.ctaSecondary}</Link>
+              </Button>
             </div>
+          </Reveal>
+        </Container>
+      </section>
+
+      {/* ──────────── THE 3-STEP LOOP ──────────── */}
+      <section className="border-t border-border py-16 md:py-24">
+        <Container size="lg">
+          <Reveal className="max-w-2xl">
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
+              {d.loopTitle}
+            </h2>
+            <p className="mt-4 text-lg text-muted">{d.loopSubtitle}</p>
+          </Reveal>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {d.loop.map((step, i) => {
+              const Icon = LOOP_ICONS[i] ?? QrCode;
+              return (
+                <Reveal key={step.title} delay={i * 0.08}>
+                  <div className="relative h-full rounded-2xl border border-border bg-surface p-6 elev-card">
+                    <span className="absolute right-5 top-4 font-display text-4xl font-extrabold text-gold/15">
+                      {i + 1}
+                    </span>
+                    <span className="grid size-12 place-items-center rounded-xl bg-gold/10 text-gold ring-1 ring-inset ring-gold/20">
+                      <Icon className="size-6" strokeWidth={1.75} />
+                    </span>
+                    <h3 className="mt-4 text-lg font-semibold text-foreground">
+                      {step.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                      {step.body}
+                    </p>
+                  </div>
+                </Reveal>
+              );
+            })}
           </div>
         </Container>
       </section>
 
-      <Container size="lg">
-        <div className="grid gap-10 py-12 lg:grid-cols-[1.6fr_1fr]">
-          {/* Services */}
-          <div>
-            <h2 className="font-display text-2xl font-bold text-foreground">
-              {t.services}
-            </h2>
-            <div className="mt-5 space-y-3">
-              {demoShop.services.map((s, i) => (
-                <div
-                  key={s.id}
-                  style={{ animationDelay: `${i * 55}ms` }}
-                  className="group animate-rise rounded-2xl border border-border bg-surface p-5 elev-card transition-[transform,box-shadow,border-color] duration-300 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-gold-soft hover:[box-shadow:var(--shadow-card-hover)]"
-                >
-                  <div className="flex items-start gap-4">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-gold/10 text-gold ring-1 ring-inset ring-gold/20 transition-transform duration-300 ease-[var(--ease-out)] group-hover:scale-105">
-                      <Tag className="size-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-foreground">
-                        {isEl ? s.name : s.nameEn}
-                      </h3>
-                      <p className="mt-0.5 text-sm text-muted">
-                        {isEl ? s.description : s.descriptionEn}
-                      </p>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-xs text-muted">
-                          <Clock className="size-3.5" />
-                          {formatDuration(s.durationMinutes, locale)}
-                        </span>
-                        <span className="inline-flex items-center rounded-full bg-gold/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-gold ring-1 ring-inset ring-gold/20">
-                          {formatPrice(s.priceCents, locale)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="hidden shrink-0 sm:block">
-                      <DemoBookingPreview
-                        locale={locale}
-                        triggerLabel={t.book}
-                        anyAvailableLabel={dict.booking.anyAvailable}
-                        dict={d}
-                        triggerClassName="inline-flex h-10 items-center gap-1.5 whitespace-nowrap rounded-full bg-gold px-5 text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 sm:hidden">
-                    <DemoBookingPreview
-                      locale={locale}
-                      triggerLabel={t.book}
-                      anyAvailableLabel={dict.booking.anyAvailable}
-                      dict={d}
-                      triggerClassName="flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gold text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.98]"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Hours sidebar */}
-          <div>
-            <div className="sticky top-6 animate-rise rounded-2xl border border-border bg-surface p-6 elev-card">
-              <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gold">
-                <Clock className="size-4" />
-                {t.hoursTitle}
-              </h3>
-              <dl className="mt-4 space-y-2">
-                {orderedDays.map((dow) => {
-                  const h = hoursByDay.get(dow);
-                  const closed = !h || h.isClosed;
-                  return (
-                    <div
-                      key={dow}
-                      className="flex items-start justify-between gap-3 border-b border-border pb-2 text-sm last:border-0"
-                    >
-                      <dt className="font-medium text-foreground">
-                        {t.days[dow]}
-                      </dt>
-                      <dd
-                        className={
-                          closed
-                            ? "text-right text-muted-2"
-                            : "text-right text-muted"
-                        }
-                      >
-                        {closed ? t.closed : `${h!.open} - ${h!.close}`}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        {/* Reviews */}
-        <section id="reviews" className="scroll-mt-20 border-t border-border py-12">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <h2 className="font-display text-2xl font-bold text-foreground">
-              {t.reviewsTitle}
-            </h2>
-            <span className="inline-flex items-center gap-1.5">
-              <Stars rating={demoShop.ratingAvg} />
-              <span className="text-sm font-semibold text-foreground">
-                {demoShop.ratingAvg.toFixed(1)}
-              </span>
-              <span className="text-sm text-muted">· {reviewsCountLabel}</span>
+      {/* ──────────── REAL SCREENS, ZIG-ZAG ──────────── */}
+      <section className="border-t border-border bg-surface/30 py-16 md:py-24">
+        <Container size="lg">
+          <Reveal className="max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-widest text-gold">
+              {d.sectionsEyebrow}
             </span>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {demoShop.staff.map((m) => (
-              <span
-                key={m.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:border-gold-soft"
-              >
-                <span
-                  className="grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold text-black"
-                  style={{ backgroundColor: m.color }}
-                >
-                  {m.name.slice(0, 1)}
-                </span>
-                {m.name}
-                <span className="inline-flex items-center gap-0.5 text-gold">
-                  <Star className="size-3.5 fill-gold" />
-                  {m.avg.toFixed(1)}
-                </span>
-                <span className="text-muted">({m.count})</span>
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {demoShop.reviews.map((rv, i) => (
-              <div
-                key={rv.id}
-                style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}
-                className="animate-rise rounded-2xl border border-border bg-surface p-5 elev-card transition-[transform,box-shadow] duration-300 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:[box-shadow:var(--shadow-card-hover)]"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <Stars rating={rv.rating} />
-                  <span className="text-xs text-muted">
-                    {fmtReviewDate(rv.daysAgo)}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm font-medium text-foreground">
-                  {rv.customerName}
-                  <span className="font-normal text-muted">
-                    {" · "}
-                    {rv.staffName}
-                  </span>
-                </p>
-                <p className="mt-1 text-sm text-foreground/90">
-                  {isEl ? rv.comment : rv.commentEn}
-                </p>
-                {rv.reply && (
-                  <div className="mt-3 rounded-lg border-l-2 border-gold bg-surface-2/50 px-3 py-2">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-gold">
-                      {t.businessReply}
-                    </p>
-                    <p className="mt-0.5 text-sm text-foreground/90">
-                      {isEl ? rv.reply : rv.replyEn}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Closing CTA — convert the prospect */}
-        <section className="border-t border-border py-14">
-          <div className="mx-auto max-w-2xl rounded-3xl border border-gold/30 bg-gold/5 p-8 text-center md:p-10">
-            <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
-              {d.ctaTitle}
+            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
+              {d.sectionsTitle}
             </h2>
-            <p className="mx-auto mt-3 max-w-lg text-muted">{d.ctaBody}</p>
-            <Link
-              href={`/${locale}/signup/business`}
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-gold px-8 py-3.5 text-base font-semibold text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
-            >
-              {d.ctaButton}
-              <ArrowRight className="size-4" />
-            </Link>
+            <p className="mt-4 text-lg text-muted">{d.sectionsSubtitle}</p>
+          </Reveal>
+
+          <div className="mt-14 space-y-16 md:space-y-24">
+            {d.sections.map((s, i) => {
+              const shot = SECTION_SHOTS[i];
+              const flip = i % 2 === 1;
+              return (
+                <div
+                  key={s.title}
+                  className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14"
+                >
+                  <Reveal className={flip ? "lg:order-2" : undefined}>
+                    {shot.frame === "phone" ? (
+                      <PhoneShot src={shot.src} width={shot.width} height={shot.height} alt={s.title} />
+                    ) : (
+                      <BrowserShot src={shot.src} width={shot.width} height={shot.height} alt={s.title} />
+                    )}
+                  </Reveal>
+                  <Reveal delay={0.08} className={flip ? "lg:order-1" : undefined}>
+                    <h3 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+                      {s.title}
+                    </h3>
+                    <p className="mt-3 text-muted md:text-lg">{s.body}</p>
+                    <ul className="mt-6 space-y-3">
+                      {s.points.map((p) => (
+                        <li key={p} className="flex items-start gap-3">
+                          <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
+                            <Check className="size-3.5" />
+                          </span>
+                          <span className="text-foreground/90">{p}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Reveal>
+                </div>
+              );
+            })}
           </div>
-        </section>
-      </Container>
+        </Container>
+      </section>
+
+      {/* ──────────── RETENTION ──────────── */}
+      <section className="border-t border-border py-16 md:py-24">
+        <Container size="lg">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
+            <Reveal>
+              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-4 py-1.5 text-xs font-semibold text-gold">
+                <UserRound className="size-3.5" />
+                Qlick
+              </span>
+              <h2 className="mt-5 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
+                {d.retentionTitle}
+              </h2>
+              <p className="mt-4 text-muted md:text-lg">{d.retentionBody}</p>
+              <ul className="mt-6 space-y-3">
+                {d.retentionPoints.map((p) => (
+                  <li key={p} className="flex items-start gap-3">
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
+                      <Check className="size-3.5" />
+                    </span>
+                    <span className="text-foreground/90">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <BrowserShot
+                src="/tour/store-desktop.png"
+                width={1440}
+                height={900}
+                alt={d.retentionTitle}
+              />
+            </Reveal>
+          </div>
+        </Container>
+      </section>
+
+      {/* ──────────── EXTRAS ──────────── */}
+      <section className="border-t border-border bg-surface/30 py-16 md:py-20">
+        <Container size="lg">
+          <Reveal>
+            <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">
+              {d.extrasTitle}
+            </h2>
+          </Reveal>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {d.extras.map((x, i) => (
+              <Reveal key={x.title} delay={(i % 4) * 0.06}>
+                <div className="h-full rounded-2xl border border-border bg-surface p-5 elev-card">
+                  <h3 className="font-semibold text-foreground">{x.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                    {x.body}
+                  </p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          {/* What you DON'T pay */}
+          <Reveal delay={0.1}>
+            <div className="mt-10 rounded-3xl border border-gold/30 bg-gold/5 p-6 md:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <h3 className="flex items-center gap-2 font-display text-xl font-bold text-foreground">
+                  <BadgeEuro className="size-5 text-gold" />
+                  {d.noPayTitle}
+                </h3>
+                <Link
+                  href={`/${locale}#pricing`}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-gold hover:text-gold-bright"
+                >
+                  {d.noPayLink}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+              <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {d.noPayItems.map((p) => (
+                  <li key={p} className="flex items-start gap-2.5">
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
+                      <Check className="size-3.5" />
+                    </span>
+                    <span className="text-sm text-foreground/90">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Reveal>
+        </Container>
+      </section>
+
+      {/* ──────────── CTA ──────────── */}
+      <section className="border-t border-border py-16 md:py-24">
+        <Container size="lg">
+          <Reveal>
+            <div className="mx-auto max-w-2xl rounded-3xl border border-gold/30 bg-gold/5 p-8 text-center md:p-12">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
+                {d.ctaTitle}
+              </h2>
+              <p className="mx-auto mt-4 max-w-lg text-muted">{d.ctaBody}</p>
+              <Button asChild size="xl" className="mt-8">
+                <Link href={`/${locale}/signup/business`}>
+                  {d.ctaButton}
+                  <ArrowRight className="ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </Reveal>
+        </Container>
+      </section>
     </div>
   );
 }
 
-function Stars({ rating }: { rating: number }) {
+/* ───────────── Screenshot frames ───────────── */
+
+function BrowserShot({
+  src,
+  width,
+  height,
+  alt,
+}: {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+}) {
   return (
-    <span className="inline-flex items-center gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => {
-        const fill = Math.max(0, Math.min(1, rating - i));
-        return (
-          <span key={i} className="relative inline-block size-4 shrink-0">
-            <Star className="absolute inset-0 size-4 text-muted/40" />
-            {fill > 0 && (
-              <span
-                className="absolute inset-y-0 left-0 overflow-hidden"
-                style={{ width: `${fill * 100}%` }}
-              >
-                <Star className="size-4 fill-gold text-gold" />
-              </span>
-            )}
-          </span>
-        );
-      })}
-    </span>
+    <div className="relative">
+      <div
+        aria-hidden
+        className="absolute -inset-4 -z-10 rounded-[28px] bg-gold/10 blur-2xl"
+      />
+      <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 ring-1 ring-gold/10">
+        <div className="flex items-center gap-1.5 border-b border-border bg-surface-2/60 px-4 py-2.5">
+          <span className="size-2.5 rounded-full bg-border" />
+          <span className="size-2.5 rounded-full bg-border" />
+          <span className="size-2.5 rounded-full bg-border" />
+        </div>
+        <Image
+          src={src}
+          width={width}
+          height={height}
+          alt={alt}
+          className="w-full"
+          sizes="(min-width: 1024px) 40rem, 100vw"
+        />
+      </div>
+    </div>
+  );
+}
+
+function PhoneShot({
+  src,
+  width,
+  height,
+  alt,
+}: {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+}) {
+  return (
+    <div className="relative mx-auto w-full max-w-[300px]">
+      <div
+        aria-hidden
+        className="absolute -inset-6 -z-10 rounded-[48px] bg-gold/10 blur-2xl"
+      />
+      <div className="overflow-hidden rounded-[2.2rem] border-[6px] border-surface-2 bg-surface shadow-2xl shadow-black/60 ring-1 ring-gold/15">
+        <Image
+          src={src}
+          width={width}
+          height={height}
+          alt={alt}
+          className="w-full"
+          sizes="300px"
+        />
+      </div>
+    </div>
   );
 }
