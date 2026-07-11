@@ -29,6 +29,7 @@ import {
   CalendarCheck,
   UserRound,
   Search,
+  X,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
@@ -178,9 +179,18 @@ export default async function LandingPage({
                     </Button>
                   </Magnetic>
                   <Button asChild variant="secondary" size="xl">
-                    <Link href="#how-it-works">{dict.hero.secondaryCta}</Link>
+                    <Link href={`/${locale}/tour`}>{dict.hero.demoCta}</Link>
                   </Button>
                 </div>
+              </Reveal>
+              <Reveal delay={0.3} y={16}>
+                <Link
+                  href="#how-it-works"
+                  className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
+                >
+                  {dict.hero.secondaryCta}
+                  <ArrowRight className="size-3.5" />
+                </Link>
               </Reveal>
             </div>
 
@@ -513,6 +523,63 @@ export default async function LandingPage({
               );
             })}
           </div>
+        </Container>
+      </section>
+
+      {/* ──────────── COMPARE (what you save) ──────────── */}
+      <section className="border-t border-border py-24 md:py-32">
+        <Container size="lg">
+          <Reveal className="mb-14 max-w-2xl">
+            <span className="text-xs font-semibold uppercase tracking-widest text-gold">
+              {dict.compare.eyebrow}
+            </span>
+            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
+              {dict.compare.title}
+            </h2>
+            <p className="mt-4 text-lg text-muted">{dict.compare.subtitle}</p>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <div className="overflow-hidden rounded-3xl border border-border bg-surface elev-card">
+              {/* Column headers */}
+              <div className="grid grid-cols-[1fr_1fr] border-b border-border sm:grid-cols-[minmax(0,0.9fr)_1fr_1fr]">
+                <div className="hidden p-5 sm:block" />
+                <div className="border-l border-border p-5 text-sm font-semibold text-muted">
+                  {dict.compare.diyLabel}
+                </div>
+                <div className="border-l border-gold/30 bg-gold/5 p-5 text-sm font-semibold text-gold">
+                  {dict.compare.qlickLabel}
+                </div>
+              </div>
+
+              {dict.compare.rows.map((row, i) => (
+                <div
+                  key={row.topic}
+                  className={`grid grid-cols-[1fr_1fr] items-stretch sm:grid-cols-[minmax(0,0.9fr)_1fr_1fr] ${
+                    i < dict.compare.rows.length - 1 ? "border-b border-border" : ""
+                  }`}
+                >
+                  <div className="col-span-2 px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-muted-2 sm:col-span-1 sm:flex sm:items-center sm:pt-0 sm:text-sm sm:font-medium sm:normal-case sm:tracking-normal sm:text-foreground">
+                    {row.topic}
+                  </div>
+                  <div className="flex items-start gap-2 border-t border-border/60 p-5 sm:border-l sm:border-t-0 sm:border-border">
+                    <X className="mt-0.5 size-4 shrink-0 text-muted-2" />
+                    <span className="text-sm text-muted">{row.diy}</span>
+                  </div>
+                  <div className="flex items-start gap-2 border-l border-t border-gold/20 bg-gold/5 p-5 sm:border-t-0">
+                    <Check className="mt-0.5 size-4 shrink-0 text-gold" />
+                    <span className="text-sm font-medium text-foreground">
+                      {row.qlick}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 flex items-center gap-2 text-sm text-muted">
+              <BadgeEuro className="size-4 text-gold" />
+              {dict.compare.footnote}
+            </p>
+          </Reveal>
         </Container>
       </section>
 

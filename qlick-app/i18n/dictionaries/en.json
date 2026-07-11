@@ -369,7 +369,7 @@
     "description": "The Greek booking platform that turns your shop door into a booking point. Scan a QR, book a slot, done."
   },
   "nav": {
-    "features": "Features",
+    "features": "What we offer",
     "pricing": "Pricing",
     "forBusiness": "For business",
     "findBusinesses": "Find businesses",
@@ -392,6 +392,7 @@
     ],
     "primaryCta": "Start free",
     "secondaryCta": "See how it works",
+    "demoCta": "See what we offer",
     "trialNote": "3 months free for the first 1,000 businesses · no credit card",
     "qrCardTitle": "Why put the QR on my door?",
     "qrCardBody": "It's the fastest way to show customers they can book online — anytime, even when you're closed.",
@@ -629,10 +630,98 @@
     "bookingsPausedShort": "Bookings paused",
     "hoursTitle": "Opening hours",
     "closed": "Closed",
+    "close": "Close",
     "reviewsTitle": "Reviews",
     "anonymous": "Anonymous",
     "businessReply": "Business reply",
     "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+  },
+  "tour": {
+    "metaTitle": "Tour — see what Qlick does · Qlick",
+    "metaDescription": "Real screens from Qlick: what your customer sees, how they book, and everything you manage.",
+    "eyebrow": "Tour",
+    "title": "See everything Qlick does",
+    "subtitle": "No promises — real screens from the product. What your customer sees, how they book, and what you manage.",
+    "ctaPrimary": "Start for free",
+    "ctaSecondary": "See a real storefront",
+    "loopTitle": "How it works — in 3 steps",
+    "loopSubtitle": "From the scan to your calendar, with no phone calls.",
+    "loop": [
+      { "title": "Your customer scans the QR", "body": "The poster on your door or counter opens your page. No app, no waiting." },
+      { "title": "They book in seconds", "body": "They pick a service, a person and a time — seeing only the genuinely free slots." },
+      { "title": "You see it instantly", "body": "The booking lands in your calendar by itself, with name and notes." }
+    ],
+    "sectionsEyebrow": "What you get",
+    "sectionsTitle": "The whole system, screen by screen",
+    "sectionsSubtitle": "Everything below is a real screen from Qlick — not a mockup.",
+    "sections": [
+      {
+        "title": "Your storefront page",
+        "body": "A clean, branded page that opens from the scan or from search — designed for mobile.",
+        "points": ["Services with prices & duration", "Hours, phones & address", "Star reviews & replies", "A booking button everywhere"]
+      },
+      {
+        "title": "Booking without friction",
+        "body": "The appointment is booked in a popup right on your page — the customer never gets lost.",
+        "points": ["Only the genuinely free slots, live", "Pick a person, or \"anyone available\"", "Customer account with confirmed email", "Tracks whether it came from QR or the site"]
+      },
+      {
+        "title": "A calendar that works like you do",
+        "body": "The whole week at a glance, per staff member, from your phone or computer.",
+        "points": ["Weekly & monthly view", "A column per staff member, color-coded", "Drag appointments to move them", "Pause online bookings with one click"]
+      },
+      {
+        "title": "A QR poster with your identity",
+        "body": "Design the poster the way you want it and print it — that's where everything starts.",
+        "points": ["Your colors, logo & text", "Print-ready PDF & PNG", "Your own link: qlick.gr/b/your-name", "We count how many scan"]
+      },
+      {
+        "title": "Appointments, staff & services",
+        "body": "The shop's day-to-day in lists you understand at a glance.",
+        "points": ["History & search across all bookings", "Statuses: completed, cancelled, no-show", "Staff with their own services & colors", "Price & duration per service"]
+      },
+      {
+        "title": "Reviews that build your name",
+        "body": "Customers leave a review after their appointment — and you reply publicly.",
+        "points": ["Stars & comments per appointment", "Rating per staff member", "Public business reply", "You decide if they're shown"]
+      },
+      {
+        "title": "Reports that show what performs",
+        "body": "Plain, clear numbers — how much you make and where customers come from.",
+        "points": ["Revenue & completed appointments", "Booking source: how much the QR brings", "Popular services & per staff member", "No-shows & cancellations"]
+      }
+    ],
+    "extrasTitle": "And also",
+    "extras": [
+      { "title": "Hours with shifts", "body": "Morning-afternoon, holidays, exceptions — whatever applies to your shop." },
+      { "title": "Greek & English", "body": "Your page and the system speak both languages." },
+      { "title": "Simple subscription", "body": "€9/month or €89/year. No hidden costs, cancel anytime." },
+      { "title": "Security & backups", "body": "Your data protected — we take care of it." }
+    ],
+    "retentionTitle": "The QR is only the first meeting",
+    "retentionBody": "Once they book once, the customer has an account: they find you again from their appointments, favorites and search — and rebook without scanning again.",
+    "retentionPoints": ["Their appointments & history in one place", "Favorite businesses for a quick return", "Search for businesses near them"],
+    "noPayTitle": "And what you DON'T pay",
+    "noPayItems": ["No commission on bookings", "No setup cost", "No developer", "No commitment — cancel anytime"],
+    "noPayLink": "See pricing",
+    "ctaTitle": "Ready to see it in your own shop?",
+    "ctaBody": "Set it up in minutes, with your own QR poster. 3 months free for the first 1,000 businesses.",
+    "ctaButton": "Start for free"
+  },
+  "compare": {
+    "eyebrow": "What you save",
+    "title": "Why not just build it myself?",
+    "subtitle": "Because it's not just a page — it's the system running behind it, and we run it for you.",
+    "diyLabel": "On your own",
+    "qlickLabel": "With Qlick",
+    "rows": [
+      { "topic": "Setup", "diy": "Weeks of work or a developer", "qlick": "Ready in minutes" },
+      { "topic": "Cost", "diy": "Development, hosting & maintenance", "qlick": "€9/month — we run it" },
+      { "topic": "Bookings", "diy": "Paper diary & missed phone calls", "qlick": "Online bookings 24/7 with QR" },
+      { "topic": "Updates", "diy": "You build each one yourself", "qlick": "New features automatically" },
+      { "topic": "Security & backups", "diy": "Your responsibility", "qlick": "We take care of it" }
+    ],
+    "footnote": "No commission on bookings. What you book is yours."
   },
   "booking": {
     "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
@@ -717,6 +806,7 @@
     "pickArea": "Choose an area from the list.",
     "newest": "New on Qlick",
     "book": "Book",
+    "viewShop": "View shop",
     "emptyPrompt": "Choose an area (and optionally a service type) to see businesses near you.",
     "noResults": "No businesses found in this area",
     "noResultsForType": " for the selected type",

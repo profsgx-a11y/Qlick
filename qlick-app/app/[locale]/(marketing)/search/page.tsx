@@ -290,10 +290,10 @@ export default async function PublicSearchPage({
                         )}
                       </div>
                       <Link
-                        href={`/${locale}/b/${r.slug}/book`}
+                        href={`/${locale}/b/${r.slug}`}
                         className="inline-flex h-9 whitespace-nowrap items-center gap-1.5 rounded-full bg-gold px-4 text-sm font-medium text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
                       >
-                        {t.book}
+                        {t.viewShop}
                         <ArrowRight className="size-4" />
                       </Link>
                     </div>
@@ -370,10 +370,10 @@ export default async function PublicSearchPage({
                       </span>
                     </div>
                     <Link
-                      href={`/${locale}/b/${r.slug}/book`}
+                      href={`/${locale}/b/${r.slug}`}
                       className="inline-flex h-9 whitespace-nowrap items-center gap-1.5 rounded-full bg-gold px-4 text-sm font-medium text-black transition-colors hover:bg-gold-bright"
                     >
-                      {t.book}
+                      {t.viewShop}
                       <ArrowRight className="size-4" />
                     </Link>
                   </div>

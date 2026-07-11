@@ -7,6 +7,7 @@ const LOCALES = ["el", "en"] as const;
 // Public marketing paths worth indexing (relative to /{locale}).
 const STATIC_PATHS = [
   "",
+  "/tour",
   "/for-business",
   "/search",
   "/gia",
