@@ -16,7 +16,7 @@ import {
 } from "@/lib/recurrence";
 
 const ACTIVE = ["pending", "confirmed", "completed"];
-export const MAX_OCCURRENCES = 12;
+const MAX_OCCURRENCES = 12;
 
 export interface SeriesRuleInput {
   businessCustomerId: string;
