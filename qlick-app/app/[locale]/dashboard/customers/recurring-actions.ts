@@ -431,7 +431,7 @@ export async function cancelSeriesBooking(
   const safeLocale = hasLocale(locale) ? locale : "el";
   const ctx = await getCtx();
   if (!ctx) return { ok: false, error: "no_permission" };
-  const { supabase, businessId, userId } = ctx;
+  const { supabase, businessId } = ctx;
 
   const { data: bk } = await supabase
     .from("bookings")
@@ -445,9 +445,123 @@ export async function cancelSeriesBooking(
     .from("bookings")
     .update({
       status: "cancelled",
-      cancelled_by: userId,
+      cancelled_by: "business",
       cancellation_reason: "series_occurrence_cancelled",
     })
+    .eq("id", bookingId)
+    .eq("business_id", businessId);
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
+}
+
+/** Move a single occurrence to a new date + time. Owner/manager only. */
+export async function rescheduleSeriesBooking(
+  locale: string,
+  bookingId: string,
+  newDate: string, // YYYY-MM-DD (business tz)
+  newTime: string, // HH:MM
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, tz } = ctx;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !/^\d{2}:\d{2}$/.test(newTime))
+    return { ok: false, error: "invalid_time" };
+
+  const { data: bk } = await supabase
+    .from("bookings")
+    .select("id, starts_at, ends_at, staff_id")
+    .eq("id", bookingId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!bk) return { ok: false, error: "not_found" };
+
+  const newStartIso = occurrenceStartIso(newDate, newTime, tz);
+  const durationMs =
+    new Date(bk.ends_at).getTime() - new Date(bk.starts_at).getTime();
+  const startMs = new Date(newStartIso).getTime();
+  const endMs = startMs + durationMs;
+  const endIso = new Date(endMs).toISOString();
+
+  // Business hours for the new date.
+  const [{ data: hourRows }, { data: closureRows }] = await Promise.all([
+    supabase
+      .from("business_hours")
+      .select("day_of_week, is_closed, open_time, close_time")
+      .eq("business_id", businessId),
+    supabase
+      .from("business_closures")
+      .select("date, is_closed, special_open_time, special_close_time")
+      .eq("business_id", businessId)
+      .eq("date", newDate),
+  ]);
+  const win = buildDayWindow(
+    newDate,
+    tz,
+    (hourRows ?? []) as DayHours[],
+    (closureRows ?? []) as Closure[],
+    [],
+  );
+  if (
+    !isWithinOpenHours(
+      minutesFromMidnight(newStartIso, tz),
+      minutesFromMidnight(endIso, tz),
+      win,
+    )
+  )
+    return { ok: false, error: "outside_hours" };
+
+  // Conflicts (exclude this booking).
+  const [{ data: overlaps }, { data: staffRows }, { data: offRows }] =
+    await Promise.all([
+      supabase
+        .from("bookings")
+        .select("starts_at, ends_at, staff_id")
+        .eq("business_id", businessId)
+        .in("status", ACTIVE)
+        .neq("id", bookingId)
+        .lt("starts_at", endIso)
+        .gt("ends_at", newStartIso),
+      supabase
+        .from("staff")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("is_active", true),
+      supabase
+        .from("staff_time_off")
+        .select("staff_id, starts_at, ends_at")
+        .eq("business_id", businessId)
+        .lt("starts_at", endIso)
+        .gt("ends_at", newStartIso),
+    ]);
+
+  if (bk.staff_id && (overlaps ?? []).some((b) => b.staff_id === bk.staff_id))
+    return { ok: false, error: "staff_busy" };
+
+  const activeIds = new Set((staffRows ?? []).map((s) => s.id));
+  const intervals: Interval[] = (overlaps ?? []).map((b) => ({
+    s: new Date(b.starts_at).getTime(),
+    e: new Date(b.ends_at).getTime(),
+    staff: b.staff_id,
+  }));
+  const offs = (offRows ?? [])
+    .filter((o) => activeIds.has(o.staff_id))
+    .map((o) => ({
+      s: new Date(o.starts_at).getTime(),
+      e: new Date(o.ends_at).getTime(),
+      staff: o.staff_id as string,
+    }));
+  if (overCapacity(intervals, activeIds.size, offs, startMs, endMs, bk.staff_id))
+    return { ok: false, error: "no_capacity" };
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ starts_at: newStartIso, ends_at: endIso })
     .eq("id", bookingId)
     .eq("business_id", businessId);
   if (error) return { ok: false, error: "save_failed" };
@@ -465,7 +579,7 @@ export async function endSeries(
   const safeLocale = hasLocale(locale) ? locale : "el";
   const ctx = await getCtx();
   if (!ctx) return { ok: false, error: "no_permission" };
-  const { supabase, businessId, userId } = ctx;
+  const { supabase, businessId } = ctx;
 
   const { data: series } = await supabase
     .from("recurring_series")
@@ -481,7 +595,7 @@ export async function endSeries(
     .from("bookings")
     .update({
       status: "cancelled",
-      cancelled_by: userId,
+      cancelled_by: "business",
       cancellation_reason: "series_ended",
     })
     .eq("business_id", businessId)

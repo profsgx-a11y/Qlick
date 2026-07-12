@@ -1047,6 +1047,7 @@
         "manageTitle": "Manage series",
         "occEmpty": "No upcoming appointments.",
         "occCancel": "Cancel appointment",
+        "occEdit": "Change date/time",
         "endAll": "End all",
         "end": "End",
         "endTitle": "End series",

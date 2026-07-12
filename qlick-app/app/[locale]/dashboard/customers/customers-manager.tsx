@@ -13,6 +13,7 @@ import {
   BadgeCheck,
   CalendarClock,
   Repeat,
+  Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,11 @@ import {
   type CustomerDetail,
   type CustomerSeries,
 } from "./actions";
-import { endSeries, cancelSeriesBooking } from "./recurring-actions";
+import {
+  endSeries,
+  cancelSeriesBooking,
+  rescheduleSeriesBooking,
+} from "./recurring-actions";
 import {
   RecurringBuilder,
   type ServiceOption,
@@ -96,6 +101,12 @@ export function CustomersManager({
   const [confirmDel, setConfirmDel] = useState<CustomerDetail | null>(null);
   const [showRecurring, setShowRecurring] = useState(false);
   const [manageSeries, setManageSeries] = useState<CustomerSeries | null>(null);
+  const [editOcc, setEditOcc] = useState<{
+    id: string;
+    date: string;
+    time: string;
+  } | null>(null);
+  const [manageError, setManageError] = useState<string | null>(null);
   const [confirmEndSeries, setConfirmEndSeries] = useState<CustomerSeries | null>(
     null,
   );
@@ -252,11 +263,53 @@ export function CustomersManager({
 
   const cancelOccurrence = (bookingId: string) => {
     if (!detail) return;
+    setManageError(null);
     startTransition(async () => {
       const res = await cancelSeriesBooking(locale, bookingId);
       if (res.ok) {
         void openDetail(detail.id);
         refresh(search);
+      } else {
+        setManageError(dashErr(d.errors, res.error, d.genericError));
+      }
+    });
+  };
+
+  const inZone = (iso: string, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz, ...opts }).format(
+      new Date(iso),
+    );
+  const dateForInput = (iso: string) =>
+    inZone(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
+  const timeForInput = (iso: string) =>
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date(iso));
+
+  const startEditOcc = (bookingId: string, startsAtIso: string) => {
+    setManageError(null);
+    setEditOcc({
+      id: bookingId,
+      date: dateForInput(startsAtIso),
+      time: timeForInput(startsAtIso),
+    });
+  };
+
+  const saveEditOcc = () => {
+    if (!editOcc || !detail) return;
+    const { id, date, time } = editOcc;
+    setManageError(null);
+    startTransition(async () => {
+      const res = await rescheduleSeriesBooking(locale, id, date, time);
+      if (res.ok) {
+        setEditOcc(null);
+        void openDetail(detail.id);
+        refresh(search);
+      } else {
+        setManageError(dashErr(d.errors, res.error, d.genericError));
       }
     });
   };
@@ -615,7 +668,11 @@ export function CustomersManager({
                               )}
                             </div>
                             <button
-                              onClick={() => setManageSeries(s)}
+                              onClick={() => {
+                                setEditOcc(null);
+                                setManageError(null);
+                                setManageSeries(s);
+                              }}
                               className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:text-gold/80"
                             >
                               <Pencil className="size-3.5" />
@@ -741,7 +798,11 @@ export function CustomersManager({
         <>
           <div
             className="fixed inset-0 z-[80] bg-black/50"
-            onClick={() => setManageSeries(null)}
+            onClick={() => {
+              setManageSeries(null);
+              setEditOcc(null);
+              setManageError(null);
+            }}
           />
           <div className="fixed left-1/2 top-1/2 z-[90] flex max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
             <div className="border-b border-border px-5 py-4">
@@ -750,7 +811,11 @@ export function CustomersManager({
                   {t.recurring.manageTitle}
                 </h3>
                 <button
-                  onClick={() => setManageSeries(null)}
+                  onClick={() => {
+                    setManageSeries(null);
+                    setEditOcc(null);
+                    setManageError(null);
+                  }}
                   className="text-muted hover:text-foreground"
                   aria-label={d.close}
                 >
@@ -763,6 +828,11 @@ export function CustomersManager({
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4">
+              {manageError && (
+                <p className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {manageError}
+                </p>
+              )}
               {(() => {
                 const occ = detail.bookings
                   .filter(
@@ -778,24 +848,79 @@ export function CustomersManager({
                   );
                 return (
                   <div className="space-y-2">
-                    {occ.map((b) => (
-                      <div
-                        key={b.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
-                      >
-                        <span className="text-sm text-foreground">
-                          {formatDateTime(b.startsAtIso, tz, locale)}
-                        </span>
-                        <button
-                          onClick={() => cancelOccurrence(b.id)}
-                          disabled={isPending}
-                          aria-label={t.recurring.occCancel}
-                          className="shrink-0 text-muted transition-colors hover:text-danger disabled:opacity-40"
+                    {occ.map((b) =>
+                      editOcc?.id === b.id ? (
+                        <div
+                          key={b.id}
+                          className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
                         >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="date"
+                              value={editOcc.date}
+                              onChange={(e) =>
+                                setEditOcc({ ...editOcc, date: e.target.value })
+                              }
+                              disabled={isPending}
+                              className="h-9"
+                            />
+                            <Input
+                              type="time"
+                              value={editOcc.time}
+                              onChange={(e) =>
+                                setEditOcc({ ...editOcc, time: e.target.value })
+                              }
+                              disabled={isPending}
+                              className="h-9 w-28"
+                            />
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              onClick={saveEditOcc}
+                              disabled={isPending}
+                              className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
+                            >
+                              <Check className="size-3.5" />
+                              {d.save}
+                            </button>
+                            <button
+                              onClick={() => setEditOcc(null)}
+                              disabled={isPending}
+                              className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
+                            >
+                              {d.cancel}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          key={b.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
+                        >
+                          <span className="text-sm text-foreground">
+                            {formatDateTime(b.startsAtIso, tz, locale)}
+                          </span>
+                          <div className="flex shrink-0 items-center gap-3">
+                            <button
+                              onClick={() => startEditOcc(b.id, b.startsAtIso)}
+                              disabled={isPending}
+                              aria-label={t.recurring.occEdit}
+                              className="text-muted transition-colors hover:text-gold disabled:opacity-40"
+                            >
+                              <Pencil className="size-4" />
+                            </button>
+                            <button
+                              onClick={() => cancelOccurrence(b.id)}
+                              disabled={isPending}
+                              aria-label={t.recurring.occCancel}
+                              className="text-muted transition-colors hover:text-danger disabled:opacity-40"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ),
+                    )}
                   </div>
                 );
               })()}
