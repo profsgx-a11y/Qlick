@@ -41,6 +41,8 @@ import {
   cancelSeriesBooking,
   rescheduleSeriesBooking,
 } from "./recurring-actions";
+import { DatePicker } from "../calendar/date-picker";
+import { availableMoveSlots } from "../calendar/actions";
 import {
   RecurringBuilder,
   type ServiceOption,
@@ -104,8 +106,10 @@ export function CustomersManager({
   const [editOcc, setEditOcc] = useState<{
     id: string;
     date: string;
-    time: string;
+    selectedIso: string | null;
   } | null>(null);
+  const [slots, setSlots] = useState<{ iso: string; label: string }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [manageError, setManageError] = useState<string | null>(null);
   const [confirmEndSeries, setConfirmEndSeries] = useState<CustomerSeries | null>(
     null,
@@ -275,35 +279,55 @@ export function CustomersManager({
     });
   };
 
-  const inZone = (iso: string, opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz, ...opts }).format(
-      new Date(iso),
-    );
   const dateForInput = (iso: string) =>
-    inZone(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
-  const timeForInput = (iso: string) =>
-    new Intl.DateTimeFormat("en-GB", {
+    new Intl.DateTimeFormat("en-CA", {
       timeZone: tz,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).format(new Date(iso));
+  const todayStr = dateForInput(new Date().toISOString());
 
-  const startEditOcc = (bookingId: string, startsAtIso: string) => {
-    setManageError(null);
-    setEditOcc({
-      id: bookingId,
-      date: dateForInput(startsAtIso),
-      time: timeForInput(startsAtIso),
+  const loadSlots = (bookingId: string, date: string, keepIso: string | null) => {
+    setSlotsLoading(true);
+    setSlots([]);
+    startTransition(async () => {
+      const res = await availableMoveSlots({ bookingId, date });
+      setSlotsLoading(false);
+      const list = res.ok ? res.slots ?? [] : [];
+      setSlots(list);
+      // Keep the current time selected if it's still offered on this day.
+      setEditOcc((prev) =>
+        prev && prev.id === bookingId
+          ? {
+              ...prev,
+              selectedIso:
+                keepIso && list.some((s) => s.iso === keepIso) ? keepIso : null,
+            }
+          : prev,
+      );
     });
   };
 
+  const startEditOcc = (bookingId: string, startsAtIso: string) => {
+    setManageError(null);
+    const date = dateForInput(startsAtIso);
+    setEditOcc({ id: bookingId, date, selectedIso: startsAtIso });
+    loadSlots(bookingId, date, startsAtIso);
+  };
+
+  const changeEditDate = (date: string) => {
+    if (!editOcc) return;
+    setEditOcc({ ...editOcc, date, selectedIso: null });
+    loadSlots(editOcc.id, date, null);
+  };
+
   const saveEditOcc = () => {
-    if (!editOcc || !detail) return;
-    const { id, date, time } = editOcc;
+    if (!editOcc || !editOcc.selectedIso || !detail) return;
+    const { id, selectedIso } = editOcc;
     setManageError(null);
     startTransition(async () => {
-      const res = await rescheduleSeriesBooking(locale, id, date, time);
+      const res = await rescheduleSeriesBooking(locale, id, selectedIso);
       if (res.ok) {
         setEditOcc(null);
         void openDetail(detail.id);
@@ -854,37 +878,62 @@ export function CustomersManager({
                           key={b.id}
                           className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
                         >
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="date"
-                              value={editOcc.date}
-                              onChange={(e) =>
-                                setEditOcc({ ...editOcc, date: e.target.value })
-                              }
-                              disabled={isPending}
-                              className="h-9"
-                            />
-                            <Input
-                              type="time"
-                              value={editOcc.time}
-                              onChange={(e) =>
-                                setEditOcc({ ...editOcc, time: e.target.value })
-                              }
-                              disabled={isPending}
-                              className="h-9 w-28"
-                            />
+                          <DatePicker
+                            value={editOcc.date}
+                            today={todayStr}
+                            locale={locale}
+                            todayLabel={t.recurring.today}
+                            prevLabel={t.recurring.prevMonth}
+                            nextLabel={t.recurring.nextMonth}
+                            onSelect={changeEditDate}
+                          />
+                          <div className="mt-3">
+                            {slotsLoading ? (
+                              <p className="text-xs text-muted">
+                                {t.recurring.previewing}
+                              </p>
+                            ) : slots.length === 0 ? (
+                              <p className="text-xs text-muted">
+                                {t.recurring.noSlots}
+                              </p>
+                            ) : (
+                              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                                {slots.map((s) => (
+                                  <button
+                                    key={s.iso}
+                                    onClick={() =>
+                                      setEditOcc({
+                                        ...editOcc,
+                                        selectedIso: s.iso,
+                                      })
+                                    }
+                                    className={cn(
+                                      "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
+                                      editOcc.selectedIso === s.iso
+                                        ? "border-gold bg-gold font-semibold text-black"
+                                        : "border-border text-foreground hover:border-gold/40",
+                                    )}
+                                  >
+                                    {s.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="mt-3 flex items-center gap-2">
                             <button
                               onClick={saveEditOcc}
-                              disabled={isPending}
+                              disabled={isPending || !editOcc.selectedIso}
                               className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
                             >
                               <Check className="size-3.5" />
                               {d.save}
                             </button>
                             <button
-                              onClick={() => setEditOcc(null)}
+                              onClick={() => {
+                                setEditOcc(null);
+                                setSlots([]);
+                              }}
                               disabled={isPending}
                               className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
                             >

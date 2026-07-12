@@ -458,20 +458,20 @@ export async function cancelSeriesBooking(
   return { ok: true };
 }
 
-/** Move a single occurrence to a new date + time. Owner/manager only. */
+/** Move a single occurrence to a new start time (a slot ISO). Owner/manager only. */
 export async function rescheduleSeriesBooking(
   locale: string,
   bookingId: string,
-  newDate: string, // YYYY-MM-DD (business tz)
-  newTime: string, // HH:MM
+  newStartIso: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const safeLocale = hasLocale(locale) ? locale : "el";
   const ctx = await getCtx();
   if (!ctx) return { ok: false, error: "no_permission" };
   const { supabase, businessId, tz } = ctx;
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !/^\d{2}:\d{2}$/.test(newTime))
-    return { ok: false, error: "invalid_time" };
+  const startMs = new Date(newStartIso).getTime();
+  if (Number.isNaN(startMs)) return { ok: false, error: "invalid_time" };
+  const newDate = localDate(newStartIso, tz);
 
   const { data: bk } = await supabase
     .from("bookings")
@@ -481,10 +481,8 @@ export async function rescheduleSeriesBooking(
     .maybeSingle();
   if (!bk) return { ok: false, error: "not_found" };
 
-  const newStartIso = occurrenceStartIso(newDate, newTime, tz);
   const durationMs =
     new Date(bk.ends_at).getTime() - new Date(bk.starts_at).getTime();
-  const startMs = new Date(newStartIso).getTime();
   const endMs = startMs + durationMs;
   const endIso = new Date(endMs).toISOString();
 

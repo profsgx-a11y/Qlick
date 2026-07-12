@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { DatePicker } from "../calendar/date-picker";
 import { cn } from "@/lib/utils";
 import { useDict } from "@/i18n/provider";
 import { dashErr } from "@/lib/dash-error";
@@ -315,13 +316,14 @@ export function RecurringBuilder({
                   />
                 </Field>
                 <Field label={tr.startFrom} htmlFor="rec-start">
-                  <Input
-                    id="rec-start"
-                    type="date"
-                    min={today}
+                  <DatePicker
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    disabled={isPending}
+                    today={today}
+                    locale={locale}
+                    todayLabel={tr.today}
+                    prevLabel={tr.prevMonth}
+                    nextLabel={tr.nextMonth}
+                    onSelect={setStartDate}
                   />
                 </Field>
                 <Field label={tr.howMany} htmlFor="rec-count">
