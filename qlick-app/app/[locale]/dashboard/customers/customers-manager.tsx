@@ -12,6 +12,7 @@ import {
   Users,
   BadgeCheck,
   CalendarClock,
+  Repeat,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,12 +33,21 @@ import {
   deleteCustomer,
   type CustomerListItem,
   type CustomerDetail,
+  type CustomerSeries,
 } from "./actions";
+import { endSeries } from "./recurring-actions";
+import {
+  RecurringBuilder,
+  type ServiceOption,
+  type StaffOption,
+} from "./recurring-builder";
 
 interface Props {
   locale: string;
   tz: string;
   initialCustomers: CustomerListItem[];
+  services: ServiceOption[];
+  staff: StaffOption[];
 }
 
 const emptyForm = {
@@ -56,7 +66,13 @@ const STATUS_TONE: Record<string, string> = {
   no_show: "bg-danger/10 text-danger",
 };
 
-export function CustomersManager({ locale, tz, initialCustomers }: Props) {
+export function CustomersManager({
+  locale,
+  tz,
+  initialCustomers,
+  services,
+  staff,
+}: Props) {
   const d = useDict().dashboard;
   const t = d.customers;
 
@@ -78,6 +94,10 @@ export function CustomersManager({ locale, tz, initialCustomers }: Props) {
   const [noteSaved, setNoteSaved] = useState(false);
 
   const [confirmDel, setConfirmDel] = useState<CustomerDetail | null>(null);
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [confirmEndSeries, setConfirmEndSeries] = useState<CustomerSeries | null>(
+    null,
+  );
 
   const refresh = useCallback(
     (q: string) => {
@@ -191,6 +211,42 @@ export function CustomersManager({ locale, tz, initialCustomers }: Props) {
 
   const displayName = (c: { firstName: string | null; lastName: string | null }) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || t.noName;
+
+  const seriesLabel = (s: CustomerSeries): string => {
+    const tr = t.recurring;
+    const wd = (tr.weekdays as string[])[s.weekday ?? 0] ?? "";
+    const n = s.intervalN;
+    const freq =
+      s.patternType === "weekly"
+        ? n === 1
+          ? tr.weeklyOne
+          : tr.weeklyEvery.replace("{n}", String(n))
+        : n === 1
+          ? tr.monthlyOne
+          : tr.monthlyEvery.replace("{n}", String(n));
+    if (s.patternType === "weekly")
+      return `${freq} · ${wd} ${s.timeOfDay}`;
+    if (s.patternType === "monthly_dom")
+      return `${freq} · ${tr.dayShort} ${s.dayOfMonth} · ${s.timeOfDay}`;
+    const nthLabel =
+      s.nth === -1
+        ? (tr.nthOptions as string[])[5]
+        : (tr.nthOptions as string[])[(s.nth ?? 1) - 1];
+    return `${freq} · ${nthLabel} ${wd} · ${s.timeOfDay}`;
+  };
+
+  const doEndSeries = () => {
+    if (!confirmEndSeries || !detail) return;
+    const id = confirmEndSeries.id;
+    setConfirmEndSeries(null);
+    startTransition(async () => {
+      const res = await endSeries(locale, id);
+      if (res.ok) {
+        void openDetail(detail.id);
+        refresh(search);
+      }
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -501,6 +557,62 @@ export function CustomersManager({ locale, tz, initialCustomers }: Props) {
                     </div>
                   </div>
 
+                  {/* Recurring series */}
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-foreground">
+                        {t.recurring.sectionTitle}
+                      </h4>
+                      <button
+                        onClick={() => setShowRecurring(true)}
+                        disabled={services.length === 0}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold/10 px-2.5 py-1 text-xs font-medium text-gold ring-1 ring-inset ring-gold/20 transition-colors hover:bg-gold/15 disabled:opacity-40"
+                      >
+                        <Repeat className="size-3.5" />
+                        {t.recurring.new}
+                      </button>
+                    </div>
+                    {detail.series.length === 0 ? (
+                      <p className="text-xs text-muted">
+                        {services.length === 0
+                          ? t.recurring.needService
+                          : t.recurring.none}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {detail.series.map((s) => (
+                          <div
+                            key={s.id}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">
+                                {s.serviceName ?? "—"}
+                              </p>
+                              <p className="truncate text-xs text-muted">
+                                {seriesLabel(s)}
+                              </p>
+                              {s.nextIso && (
+                                <p className="truncate text-[11px] text-gold/80">
+                                  {t.recurring.next.replace(
+                                    "{d}",
+                                    formatDateTime(s.nextIso, tz, locale),
+                                  )}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => setConfirmEndSeries(s)}
+                              className="shrink-0 text-xs text-danger hover:text-danger/80"
+                            >
+                              {t.recurring.end}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* History */}
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-foreground">
@@ -584,6 +696,30 @@ export function CustomersManager({ locale, tz, initialCustomers }: Props) {
           pending={isPending}
           onConfirm={doDelete}
           onCancel={() => setConfirmDel(null)}
+        />
+      )}
+
+      {confirmEndSeries && (
+        <ConfirmDialog
+          title={t.recurring.endTitle}
+          message={t.recurring.endConfirm}
+          confirmLabel={t.recurring.end}
+          danger
+          pending={isPending}
+          onConfirm={doEndSeries}
+          onCancel={() => setConfirmEndSeries(null)}
+        />
+      )}
+
+      {showRecurring && detail && (
+        <RecurringBuilder
+          locale={locale}
+          tz={tz}
+          businessCustomerId={detail.id}
+          services={services}
+          staff={staff}
+          onClose={() => setShowRecurring(false)}
+          onCreated={() => void openDetail(detail.id)}
         />
       )}
     </div>

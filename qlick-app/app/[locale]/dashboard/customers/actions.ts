@@ -216,6 +216,18 @@ export interface CustomerBooking {
   status: string;
 }
 
+export interface CustomerSeries {
+  id: string;
+  serviceName: string | null;
+  patternType: string;
+  intervalN: number;
+  weekday: number | null;
+  nth: number | null;
+  dayOfMonth: number | null;
+  timeOfDay: string;
+  nextIso: string | null;
+}
+
 export interface CustomerDetail {
   id: string;
   firstName: string | null;
@@ -228,6 +240,7 @@ export interface CustomerDetail {
   totalSpentCents: number;
   lastVisitIso: string | null;
   bookings: CustomerBooking[];
+  series: CustomerSeries[];
 }
 
 export async function getCustomer(
@@ -249,7 +262,7 @@ export async function getCustomer(
   let query = supabase
     .from("bookings")
     .select(
-      "id, starts_at, ends_at, service_name, price_cents, status, staff:staff(name)",
+      "id, starts_at, ends_at, service_name, price_cents, status, series_id, staff:staff(name)",
     )
     .eq("business_id", businessId)
     .order("starts_at", { ascending: false });
@@ -286,6 +299,43 @@ export async function getCustomer(
       .sort()
       .at(-1) ?? null;
 
+  // Active recurring series for this customer, with their next upcoming date.
+  const { data: seriesRows } = await supabase
+    .from("recurring_series")
+    .select(
+      "id, service_name, pattern_type, interval_n, weekday, nth, day_of_month, time_of_day",
+    )
+    .eq("business_id", businessId)
+    .eq("business_customer_id", card.id)
+    .eq("status", "active");
+
+  const nowMs = Date.now();
+  const nextBySeriesId = new Map<string, string>();
+  for (const b of (rows ?? [])
+    .slice()
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))) {
+    if (
+      b.series_id &&
+      (b.status === "pending" || b.status === "confirmed") &&
+      new Date(b.starts_at).getTime() >= nowMs &&
+      !nextBySeriesId.has(b.series_id)
+    ) {
+      nextBySeriesId.set(b.series_id, b.starts_at);
+    }
+  }
+
+  const series: CustomerSeries[] = (seriesRows ?? []).map((s) => ({
+    id: s.id,
+    serviceName: s.service_name,
+    patternType: s.pattern_type,
+    intervalN: s.interval_n,
+    weekday: s.weekday,
+    nth: s.nth,
+    dayOfMonth: s.day_of_month,
+    timeOfDay: s.time_of_day,
+    nextIso: nextBySeriesId.get(s.id) ?? null,
+  }));
+
   return {
     ok: true,
     customer: {
@@ -300,6 +350,7 @@ export async function getCustomer(
       totalSpentCents,
       lastVisitIso,
       bookings,
+      series,
     },
   };
 }

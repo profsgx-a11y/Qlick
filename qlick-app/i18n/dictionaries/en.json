@@ -1012,6 +1012,53 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "no_show": "No-show"
+      },
+      "recurring": {
+        "title": "Recurring appointment",
+        "service": "Service",
+        "staff": "Staff",
+        "anyStaff": "Anyone",
+        "pattern": "Repeat",
+        "patternWeekly": "Weekly",
+        "patternMonthlyDom": "Monthly (day of month)",
+        "patternMonthlyNth": "Monthly (specific day)",
+        "everyWeeks": "Every how many weeks",
+        "everyMonths": "Every how many months",
+        "weekday": "Day",
+        "which": "Which",
+        "dayOfMonth": "Day of month",
+        "time": "Time",
+        "startFrom": "Start from",
+        "howMany": "How many",
+        "preview": "Preview",
+        "previewing": "Calculating…",
+        "occurrencesTitle": "Proposed appointments",
+        "noneComputed": "No dates found.",
+        "creating": "Creating…",
+        "createN": "Create {n} appointments",
+        "resultCreated": "Created {n} appointments.",
+        "resultSkipped": "({n} skipped)",
+        "sectionTitle": "Recurring",
+        "new": "New",
+        "none": "No active series.",
+        "needService": "Add a service first.",
+        "next": "Next: {d}",
+        "end": "End",
+        "endTitle": "End series",
+        "endConfirm": "Cancel all upcoming appointments in this series?",
+        "weeklyOne": "Every week",
+        "weeklyEvery": "Every {n} wks",
+        "monthlyOne": "Every month",
+        "monthlyEvery": "Every {n} months",
+        "dayShort": "day",
+        "weekdays": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "nthOptions": ["1st", "2nd", "3rd", "4th", "5th", "Last"],
+        "status": {
+          "ok": "Available",
+          "closed": "Closed",
+          "busy": "Taken",
+          "past": "Past"
+        }
       }
     },
     "report": {
@@ -1422,7 +1469,8 @@
       "need_name_or_phone": "Enter a name or phone number.",
       "not_found": "Not found.",
       "cannot_delete_account": "Customers with an account can't be deleted.",
-      "delete_failed": "Delete didn't complete. Please try again."
+      "delete_failed": "Delete didn't complete. Please try again.",
+      "no_occurrences": "No available appointment was selected."
     },
     "subscription": {
       "trialWord": "Your free trial",

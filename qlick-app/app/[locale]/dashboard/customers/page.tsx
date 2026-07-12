@@ -17,14 +17,28 @@ export default async function CustomersPage({
 
   const { business, fullName, email } = await requireBusiness(locale);
   const supabase = await createClient();
-  const [{ data: bizRow }, res] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select("timezone")
-      .eq("id", business.id)
-      .maybeSingle(),
-    listCustomers(),
-  ]);
+  const [{ data: bizRow }, { data: services }, { data: staff }, res] =
+    await Promise.all([
+      supabase
+        .from("businesses")
+        .select("timezone")
+        .eq("id", business.id)
+        .maybeSingle(),
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes, price_cents")
+        .eq("business_id", business.id)
+        .eq("is_active", true)
+        .order("order_index")
+        .order("created_at"),
+      supabase
+        .from("staff")
+        .select("id, name")
+        .eq("business_id", business.id)
+        .eq("is_active", true)
+        .order("order_index"),
+      listCustomers(),
+    ]);
   const tz = (bizRow as { timezone?: string } | null)?.timezone || "Europe/Athens";
 
   return (
@@ -40,6 +54,8 @@ export default async function CustomersPage({
           locale={locale}
           tz={tz}
           initialCustomers={res.customers ?? []}
+          services={services ?? []}
+          staff={staff ?? []}
         />
       </div>
     </>
