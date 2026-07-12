@@ -423,6 +423,41 @@ export async function createSeries(
   return { ok: true, created, skipped };
 }
 
+/** Cancel a single occurrence (one booking) of a series. Owner/manager only. */
+export async function cancelSeriesBooking(
+  locale: string,
+  bookingId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, userId } = ctx;
+
+  const { data: bk } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("id", bookingId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!bk) return { ok: false, error: "not_found" };
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_by: userId,
+      cancellation_reason: "series_occurrence_cancelled",
+    })
+    .eq("id", bookingId)
+    .eq("business_id", businessId);
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
+}
+
 export async function endSeries(
   locale: string,
   seriesId: string,

@@ -214,6 +214,7 @@ export interface CustomerBooking {
   staffName: string | null;
   priceCents: number;
   status: string;
+  seriesId: string | null;
 }
 
 export interface CustomerSeries {
@@ -288,6 +289,7 @@ export async function getCustomer(
       staffName,
       priceCents: b.price_cents ?? 0,
       status: b.status,
+      seriesId: b.series_id,
     };
   });
 

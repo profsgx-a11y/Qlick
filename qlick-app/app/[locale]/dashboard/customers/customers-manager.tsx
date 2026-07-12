@@ -35,7 +35,7 @@ import {
   type CustomerDetail,
   type CustomerSeries,
 } from "./actions";
-import { endSeries } from "./recurring-actions";
+import { endSeries, cancelSeriesBooking } from "./recurring-actions";
 import {
   RecurringBuilder,
   type ServiceOption,
@@ -95,6 +95,7 @@ export function CustomersManager({
 
   const [confirmDel, setConfirmDel] = useState<CustomerDetail | null>(null);
   const [showRecurring, setShowRecurring] = useState(false);
+  const [manageSeries, setManageSeries] = useState<CustomerSeries | null>(null);
   const [confirmEndSeries, setConfirmEndSeries] = useState<CustomerSeries | null>(
     null,
   );
@@ -239,8 +240,20 @@ export function CustomersManager({
     if (!confirmEndSeries || !detail) return;
     const id = confirmEndSeries.id;
     setConfirmEndSeries(null);
+    setManageSeries(null);
     startTransition(async () => {
       const res = await endSeries(locale, id);
+      if (res.ok) {
+        void openDetail(detail.id);
+        refresh(search);
+      }
+    });
+  };
+
+  const cancelOccurrence = (bookingId: string) => {
+    if (!detail) return;
+    startTransition(async () => {
+      const res = await cancelSeriesBooking(locale, bookingId);
       if (res.ok) {
         void openDetail(detail.id);
         refresh(search);
@@ -602,10 +615,11 @@ export function CustomersManager({
                               )}
                             </div>
                             <button
-                              onClick={() => setConfirmEndSeries(s)}
-                              className="shrink-0 text-xs text-danger hover:text-danger/80"
+                              onClick={() => setManageSeries(s)}
+                              className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:text-gold/80"
                             >
-                              {t.recurring.end}
+                              <Pencil className="size-3.5" />
+                              {t.recurring.manage}
                             </button>
                           </div>
                         ))}
@@ -721,6 +735,87 @@ export function CustomersManager({
           onClose={() => setShowRecurring(false)}
           onCreated={() => void openDetail(detail.id)}
         />
+      )}
+
+      {manageSeries && detail && (
+        <>
+          <div
+            className="fixed inset-0 z-[80] bg-black/50"
+            onClick={() => setManageSeries(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[90] flex max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
+            <div className="border-b border-border px-5 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-lg font-bold text-foreground">
+                  {t.recurring.manageTitle}
+                </h3>
+                <button
+                  onClick={() => setManageSeries(null)}
+                  className="text-muted hover:text-foreground"
+                  aria-label={d.close}
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-muted">
+                {manageSeries.serviceName} · {seriesLabel(manageSeries)}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+              {(() => {
+                const occ = detail.bookings
+                  .filter(
+                    (b) =>
+                      b.seriesId === manageSeries.id &&
+                      (b.status === "pending" || b.status === "confirmed") &&
+                      Date.parse(b.startsAtIso) >= Date.now(),
+                  )
+                  .sort((a, b) => a.startsAtIso.localeCompare(b.startsAtIso));
+                if (occ.length === 0)
+                  return (
+                    <p className="text-sm text-muted">{t.recurring.occEmpty}</p>
+                  );
+                return (
+                  <div className="space-y-2">
+                    {occ.map((b) => (
+                      <div
+                        key={b.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
+                      >
+                        <span className="text-sm text-foreground">
+                          {formatDateTime(b.startsAtIso, tz, locale)}
+                        </span>
+                        <button
+                          onClick={() => cancelOccurrence(b.id)}
+                          disabled={isPending}
+                          aria-label={t.recurring.occCancel}
+                          className="shrink-0 text-muted transition-colors hover:text-danger disabled:opacity-40"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="border-t border-border px-5 py-4">
+              <button
+                onClick={() => {
+                  const s = manageSeries;
+                  setManageSeries(null);
+                  setConfirmEndSeries(s);
+                }}
+                className="inline-flex items-center gap-1.5 text-sm text-danger hover:text-danger/80"
+              >
+                <Trash2 className="size-4" />
+                {t.recurring.endAll}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
