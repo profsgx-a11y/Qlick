@@ -260,7 +260,7 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-foreground">
-                        {b.customer_name || d.customerFallback}
+                        {b.customer_name || b.customer_phone || d.customerFallback}
                       </span>
                       <span
                         className={cn(
@@ -281,7 +281,7 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
                         {formatDateTime(b.starts_at, timeZone, locale)} ·{" "}
                         {formatTimeRange(b.starts_at, b.ends_at, timeZone, locale)}
                       </span>
-                      {b.customer_phone && (
+                      {b.customer_name && b.customer_phone && (
                         <a
                           href={`tel:${b.customer_phone}`}
                           className="inline-flex items-center gap-1 hover:text-foreground"
