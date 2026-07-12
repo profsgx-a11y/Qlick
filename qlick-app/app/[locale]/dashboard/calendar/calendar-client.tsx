@@ -581,7 +581,6 @@ export function CalendarClient({
     const staffId = newForm.staffId === UNASSIGNED ? null : newForm.staffId;
     const svc = services.find((s) => s.id === newForm.serviceId);
     if (!svc) return setNewErr(t.pickService);
-    if (!newForm.name.trim()) return setNewErr(t.enterCustomer);
     const mt = /^(\d{1,2}):(\d{2})$/.exec(newForm.time.trim());
     if (!mt) return setNewErr(t.invalidTime);
     const [y, mo, d] = newSlot.dateStr.split("-").map(Number);
@@ -617,7 +616,7 @@ export function CalendarClient({
           serviceId: svc.id,
           serviceName: res.serviceName ?? svc.name,
           customerId: ownerUserId,
-          customerName: newForm.name.trim(),
+          customerName: newForm.name.trim() || null,
           customerPhone: res.customerPhone ?? null,
           customerNotes: newForm.notes.trim() || null,
           noStaffPreference: !staffId,
@@ -1066,11 +1065,9 @@ export function CalendarClient({
                     <span className="shrink-0 tabular-nums">
                       {minLabel(b.startMin)}–{minLabel(endMinShown)}
                     </span>
-                    {b.customerName && (
-                      <span className="truncate font-normal text-foreground/90">
-                        {b.customerName}
-                      </span>
-                    )}
+                    <span className="truncate font-normal text-foreground/90">
+                      {b.customerName || t.customerFallback}
+                    </span>
                     {hasNote && (
                       <StickyNote className="ml-auto size-3 shrink-0 text-gold/90" />
                     )}
@@ -1091,11 +1088,9 @@ export function CalendarClient({
                         <StickyNote className="ml-auto size-3 shrink-0 text-gold/90" />
                       )}
                     </div>
-                    {b.customerName && (
-                      <div className="truncate font-medium leading-tight text-foreground/90">
-                        {b.customerName}
-                      </div>
-                    )}
+                    <div className="truncate font-medium leading-tight text-foreground/90">
+                      {b.customerName || t.customerFallback}
+                    </div>
                     {!twoLine && b.customerPhone && (
                       <div className="flex items-center gap-1 truncate leading-tight text-muted">
                         <Phone className="size-3 shrink-0" />
@@ -1159,7 +1154,7 @@ export function CalendarClient({
                   <div className="flex items-center gap-1 truncate text-muted">
                     <UserPlus className="size-3 shrink-0" />
                     <span className="truncate">
-                      {u.b.customerName ?? t.unassigned}
+                      {u.b.customerName ?? t.customerFallback}
                     </span>
                   </div>
                   <div className="truncate text-[10px] italic text-muted/80">
@@ -1894,6 +1889,10 @@ export function CalendarClient({
                       className={inputCls}
                     />
                   </label>
+
+                  <p className="text-[11px] leading-snug text-muted-2">
+                    {t.walkinHint}
+                  </p>
 
                   <label className="block text-xs text-muted">
                     {t.notes}

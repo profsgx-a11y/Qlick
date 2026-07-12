@@ -146,17 +146,20 @@ export async function createWalkin(
   }
   const tz = biz.timezone || "Europe/Athens";
 
-  if (!input.customerName.trim())
-    return { ok: false, error: "enter_customer_name" };
   if (!input.serviceId) return { ok: false, error: "choose_service" };
 
-  // Phone is optional, but if given it must be a real number.
+  // Both name and phone are optional for a dashboard booking. Phone, if given,
+  // must be a real number.
   let phone: string | null = null;
   if (input.customerPhone.trim()) {
     phone = normalizePhone(input.customerPhone);
     if (!phone)
       return { ok: false, error: "invalid_phone" };
   }
+
+  // Source attribution: a phone number means the owner took a phone booking;
+  // otherwise (name only, or nothing) it's a walk-in added at the shop.
+  const source = phone ? "phone" : "dashboard";
 
   // Service must belong to this business and be active.
   const { data: svc } = await supabase
@@ -258,9 +261,9 @@ export async function createWalkin(
       starts_at: input.startsAtIso,
       ends_at: endsAtIso,
       status: "confirmed",
-      source: "dashboard",
+      source,
       no_staff_preference: !input.staffId,
-      customer_name: input.customerName.trim(),
+      customer_name: input.customerName.trim() || null,
       customer_phone: phone,
       customer_notes: input.notes.trim().slice(0, 300) || null,
       price_cents: svc.price_cents,
