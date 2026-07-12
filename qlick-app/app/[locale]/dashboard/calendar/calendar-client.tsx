@@ -1066,7 +1066,7 @@ export function CalendarClient({
                       {minLabel(b.startMin)}–{minLabel(endMinShown)}
                     </span>
                     <span className="truncate font-normal text-foreground/90">
-                      {b.customerName || t.customerFallback}
+                      {b.customerName || b.customerPhone || t.customerFallback}
                     </span>
                     {hasNote && (
                       <StickyNote className="ml-auto size-3 shrink-0 text-gold/90" />
@@ -1089,9 +1089,9 @@ export function CalendarClient({
                       )}
                     </div>
                     <div className="truncate font-medium leading-tight text-foreground/90">
-                      {b.customerName || t.customerFallback}
+                      {b.customerName || b.customerPhone || t.customerFallback}
                     </div>
-                    {!twoLine && b.customerPhone && (
+                    {!twoLine && b.customerName && b.customerPhone && (
                       <div className="flex items-center gap-1 truncate leading-tight text-muted">
                         <Phone className="size-3 shrink-0" />
                         <span className="truncate">{b.customerPhone}</span>
@@ -1154,7 +1154,7 @@ export function CalendarClient({
                   <div className="flex items-center gap-1 truncate text-muted">
                     <UserPlus className="size-3 shrink-0" />
                     <span className="truncate">
-                      {u.b.customerName ?? t.customerFallback}
+                      {u.b.customerName || u.b.customerPhone || t.customerFallback}
                     </span>
                   </div>
                   <div className="truncate text-[10px] italic text-muted/80">
@@ -1424,7 +1424,7 @@ export function CalendarClient({
                             {minLabel(minutesFromMidnight(b.startsAt, tz))}
                           </span>
                           <span className="truncate">
-                            {b.customerName ?? b.serviceName}
+                            {b.customerName ?? b.customerPhone ?? b.serviceName}
                           </span>
                         </div>
                       );
