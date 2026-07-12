@@ -7,7 +7,6 @@ import {
   Sparkles,
   BarChart3,
   Smartphone,
-  Check,
   ArrowRight,
   Scissors,
   Hand,
@@ -29,7 +28,6 @@ import {
   CalendarCheck,
   UserRound,
   Search,
-  X,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
@@ -38,6 +36,7 @@ import { Reveal, CountUp, Magnetic } from "@/components/motion/primitives";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { PhoneDemo } from "@/components/marketing/phone-demo";
 import { Marquee } from "@/components/marketing/marquee";
+import { PricingSection } from "@/components/marketing/pricing-section";
 import { getDictionary, hasLocale } from "@/i18n/config";
 import { generateQrSvg } from "@/lib/qr";
 import { createClient } from "@/lib/supabase/server";
@@ -526,134 +525,8 @@ export default async function LandingPage({
         </Container>
       </section>
 
-      {/* ──────────── COMPARE (what you save) ──────────── */}
-      <section className="border-t border-border py-24 md:py-32">
-        <Container size="lg">
-          <Reveal className="mb-14 max-w-2xl">
-            <span className="text-xs font-semibold uppercase tracking-widest text-gold">
-              {dict.compare.eyebrow}
-            </span>
-            <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
-              {dict.compare.title}
-            </h2>
-            <p className="mt-4 text-lg text-muted">{dict.compare.subtitle}</p>
-          </Reveal>
-
-          <Reveal delay={0.08}>
-            <div className="overflow-hidden rounded-3xl border border-border bg-surface elev-card">
-              {/* Column headers */}
-              <div className="grid grid-cols-[1fr_1fr] border-b border-border sm:grid-cols-[minmax(0,0.9fr)_1fr_1fr]">
-                <div className="hidden p-5 sm:block" />
-                <div className="border-l border-border p-5 text-sm font-semibold text-muted">
-                  {dict.compare.diyLabel}
-                </div>
-                <div className="border-l border-gold/30 bg-gold/5 p-5 text-sm font-semibold text-gold">
-                  {dict.compare.qlickLabel}
-                </div>
-              </div>
-
-              {dict.compare.rows.map((row, i) => (
-                <div
-                  key={row.topic}
-                  className={`grid grid-cols-[1fr_1fr] items-stretch sm:grid-cols-[minmax(0,0.9fr)_1fr_1fr] ${
-                    i < dict.compare.rows.length - 1 ? "border-b border-border" : ""
-                  }`}
-                >
-                  <div className="col-span-2 px-5 pt-4 text-xs font-semibold uppercase tracking-wide text-muted-2 sm:col-span-1 sm:flex sm:items-center sm:pt-0 sm:text-sm sm:font-medium sm:normal-case sm:tracking-normal sm:text-foreground">
-                    {row.topic}
-                  </div>
-                  <div className="flex items-start gap-2 border-t border-border/60 p-5 sm:border-l sm:border-t-0 sm:border-border">
-                    <X className="mt-0.5 size-4 shrink-0 text-muted-2" />
-                    <span className="text-sm text-muted">{row.diy}</span>
-                  </div>
-                  <div className="flex items-start gap-2 border-l border-t border-gold/20 bg-gold/5 p-5 sm:border-t-0">
-                    <Check className="mt-0.5 size-4 shrink-0 text-gold" />
-                    <span className="text-sm font-medium text-foreground">
-                      {row.qlick}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-5 flex items-center gap-2 text-sm text-muted">
-              <BadgeEuro className="size-4 text-gold" />
-              {dict.compare.footnote}
-            </p>
-          </Reveal>
-        </Container>
-      </section>
-
       {/* ──────────── PRICING ──────────── */}
-      <section id="pricing" className="border-t border-border py-24 md:py-32">
-        <Container size="xl">
-          <Reveal className="mb-16 text-center">
-            <span className="text-xs font-semibold uppercase tracking-widest text-gold">
-              {dict.pricing.eyebrow}
-            </span>
-            <h2 className="mx-auto mt-3 max-w-2xl font-display text-4xl font-extrabold tracking-tight text-foreground md:text-5xl">
-              {dict.pricing.title}
-            </h2>
-            <p className="mt-4 text-lg text-muted">{dict.pricing.subtitle}</p>
-          </Reveal>
-
-          <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-3">
-            {dict.pricing.plans.map((plan, i) => (
-              <Reveal key={plan.name} delay={i * 0.1}>
-                <div
-                  className={
-                    plan.highlighted
-                      ? "relative h-full rounded-3xl border border-gold bg-surface p-8 shadow-[0_24px_60px_-30px_var(--gold-glow)] transition-[transform,box-shadow] duration-300 ease-[var(--ease-out)] hover:-translate-y-1 hover:shadow-[0_30px_72px_-26px_var(--gold-glow)]"
-                      : "h-full rounded-3xl border border-border bg-surface p-8 elev-card transition-[transform,box-shadow,border-color] duration-300 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:border-gold-soft hover:[box-shadow:var(--shadow-card-hover)]"
-                  }
-                >
-                  {plan.highlighted && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gold px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-black">
-                      {dict.pricing.popular}
-                    </span>
-                  )}
-                  <h3 className="text-sm font-semibold uppercase tracking-widest text-muted">
-                    {plan.name}
-                  </h3>
-                  <div className="mt-4 flex items-baseline gap-2">
-                    {plan.oldPrice && (
-                      <span className="text-2xl font-semibold text-muted-2 line-through">
-                        {plan.oldPrice}
-                      </span>
-                    )}
-                    <span className="font-display text-5xl font-extrabold text-gold">
-                      {plan.price}
-                    </span>
-                    {plan.period && (
-                      <span className="text-sm text-muted">{plan.period}</span>
-                    )}
-                  </div>
-                  <p className="mt-3 min-h-[3rem] text-sm text-muted">
-                    {plan.description}
-                  </p>
-                  <Button
-                    asChild
-                    variant={plan.highlighted ? "primary" : "secondary"}
-                    className="mt-6 w-full"
-                  >
-                    <Link href={`/${locale}/signup/business`}>{plan.cta}</Link>
-                  </Button>
-                  <ul className="mt-8 space-y-3">
-                    {plan.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2 text-sm text-foreground"
-                      >
-                        <Check className="mt-0.5 size-4 shrink-0 text-gold" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </section>
+      <PricingSection locale={locale} pricing={dict.pricing} />
 
       {/* ──────────── FINAL CTA — with a scannable QR ──────────── */}
       <section className="border-t border-border py-24 md:py-32">
