@@ -546,6 +546,7 @@
     "title": "Simple. No surprises.",
     "subtitle": "Start free. Pay only when you're ready.",
     "popular": "Best value",
+    "footnote": "We never ask for a card or charge automatically. When a plan ends, your page stops taking online bookings — it isn't deleted — and you always see the exact expiry date in Settings.",
     "plans": [
       {
         "name": "Free trial",
@@ -553,6 +554,7 @@
         "oldPrice": "",
         "period": "for 3 months",
         "description": "All of Qlick, for the first 1,000 businesses. After that: 1 month free.",
+        "note": "No card. When it ends it stops on its own — no charge.",
         "features": [
           "Unlimited bookings",
           "Up to 3 staff",
@@ -569,12 +571,12 @@
         "oldPrice": "€18",
         "period": "/month",
         "description": "Everything an active business needs, with no limits.",
+        "note": "No commitment · cancel anytime.",
         "features": [
           "Everything in Free",
           "Unlimited staff",
           "Unlimited services",
-          "Priority support",
-          "Cancel anytime"
+          "Priority support"
         ],
         "cta": "Choose Monthly",
         "highlighted": false
@@ -585,6 +587,7 @@
         "oldPrice": "€216",
         "period": "/year",
         "description": "Same as Monthly, in one payment. Just €7.40 a month.",
+        "note": "No automatic renewal · you're not locked in for another year.",
         "features": [
           "Everything in Monthly",
           "2+ months free vs paying monthly",
@@ -707,21 +710,6 @@
     "ctaTitle": "Ready to see it in your own shop?",
     "ctaBody": "Set it up in minutes, with your own QR poster. 3 months free for the first 1,000 businesses.",
     "ctaButton": "Start for free"
-  },
-  "compare": {
-    "eyebrow": "What you save",
-    "title": "Why not just build it myself?",
-    "subtitle": "Because it's not just a page — it's the system running behind it, and we run it for you.",
-    "diyLabel": "On your own",
-    "qlickLabel": "With Qlick",
-    "rows": [
-      { "topic": "Setup", "diy": "Weeks of work or a developer", "qlick": "Ready in minutes" },
-      { "topic": "Cost", "diy": "Development, hosting & maintenance", "qlick": "€9/month — we run it" },
-      { "topic": "Bookings", "diy": "Paper diary & missed phone calls", "qlick": "Online bookings 24/7 with QR" },
-      { "topic": "Updates", "diy": "You build each one yourself", "qlick": "New features automatically" },
-      { "topic": "Security & backups", "diy": "Your responsibility", "qlick": "We take care of it" }
-    ],
-    "footnote": "No commission on bookings. What you book is yours."
   },
   "booking": {
     "weekdaysShort": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
