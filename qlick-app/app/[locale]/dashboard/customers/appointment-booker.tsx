@@ -131,17 +131,17 @@ export function AppointmentBooker({
       {toast && (
         <div
           className={cn(
-            "fixed left-1/2 top-6 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl",
+            "pointer-events-none fixed left-1/2 top-1/2 z-[100] flex max-w-[90vw] -translate-x-1/2 -translate-y-1/2 items-center gap-2.5 rounded-2xl border-2 bg-surface px-6 py-4 text-base font-semibold shadow-2xl",
             toast.kind === "ok"
-              ? "border-success/40 bg-success/15 text-success"
-              : "border-danger/40 bg-danger/15 text-danger",
+              ? "border-success/50 text-success"
+              : "border-danger/50 text-danger",
           )}
           role="status"
         >
           {toast.kind === "ok" ? (
-            <CheckCircle2 className="size-4 shrink-0" />
+            <CheckCircle2 className="size-6 shrink-0" />
           ) : (
-            <AlertCircle className="size-4 shrink-0" />
+            <AlertCircle className="size-6 shrink-0" />
           )}
           {toast.msg}
         </div>
