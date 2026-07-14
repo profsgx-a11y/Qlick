@@ -10,6 +10,7 @@ export interface CustomerListItem {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
+  email: string | null;
   hasAccount: boolean;
   visits: number; // completed appointments
   upcoming: number; // pending/confirmed in the future
@@ -37,6 +38,7 @@ interface Card {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  email: string | null;
   notes: string | null;
 }
 
@@ -114,7 +116,7 @@ export async function listCustomers(search?: string): Promise<{
 
   const { data: cardData } = await supabase
     .from("business_customers")
-    .select("id, customer_id, first_name, last_name, phone, notes")
+    .select("id, customer_id, first_name, last_name, phone, email, notes")
     .eq("business_id", businessId);
   const cards: Card[] = cardData ?? [];
 
@@ -176,6 +178,7 @@ export async function listCustomers(search?: string): Promise<{
       firstName: c.first_name,
       lastName: c.last_name,
       phone: c.phone,
+      email: c.email,
       hasAccount: !!c.customer_id,
       visits: a?.visits ?? 0,
       upcoming: a?.upcoming ?? 0,
@@ -190,7 +193,8 @@ export async function listCustomers(search?: string): Promise<{
     customers = customers.filter((c) => {
       const name = `${c.firstName ?? ""} ${c.lastName ?? ""}`.toLowerCase();
       const phone = (c.phone ?? "").toLowerCase();
-      return name.includes(q) || phone.includes(q);
+      const email = (c.email ?? "").toLowerCase();
+      return name.includes(q) || phone.includes(q) || email.includes(q);
     });
   }
 

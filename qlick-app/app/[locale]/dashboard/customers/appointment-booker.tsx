@@ -62,6 +62,7 @@ export function AppointmentBooker({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
+  const [justBooked, setJustBooked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -87,6 +88,7 @@ export function AppointmentBooker({
   const book = () => {
     if (!selectedIso) return;
     setError(null);
+    setJustBooked(false);
     startTransition(async () => {
       const res = await bookCustomerAppointment(locale, {
         businessCustomerId,
@@ -98,6 +100,7 @@ export function AppointmentBooker({
         setError(dashErr(d.errors, res.error, d.genericError));
         return;
       }
+      setJustBooked(true);
       setBookedCount((c) => c + 1);
       onBooked();
       loadSlots(serviceId, staffId, date); // drop the just-booked slot
@@ -178,7 +181,10 @@ export function AppointmentBooker({
                     {slots.map((s) => (
                       <button
                         key={s.iso}
-                        onClick={() => setSelectedIso(s.iso)}
+                        onClick={() => {
+                          setSelectedIso(s.iso);
+                          setJustBooked(false);
+                        }}
                         className={cn(
                           "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
                           selectedIso === s.iso
@@ -197,6 +203,12 @@ export function AppointmentBooker({
             {error && (
               <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                 {error}
+              </p>
+            )}
+            {justBooked && !error && (
+              <p className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+                <CheckCircle2 className="size-4" />
+                {tb.bookedOk}
               </p>
             )}
           </div>

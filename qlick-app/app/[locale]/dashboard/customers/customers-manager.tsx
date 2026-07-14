@@ -14,6 +14,7 @@ import {
   CalendarClock,
   CalendarPlus,
   Check,
+  Mail,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ import {
   deleteCustomer,
   type CustomerListItem,
   type CustomerDetail,
+  type CustomerBooking,
 } from "./actions";
 import {
   cancelSeriesBooking,
@@ -297,6 +299,149 @@ export function CustomersManager({
     });
   };
 
+  // An upcoming appointment: editable (reschedule / cancel) inline.
+  const renderUpcomingRow = (b: CustomerBooking) => {
+    if (editOcc?.id === b.id) {
+      return (
+        <div
+          key={b.id}
+          className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
+        >
+          <DatePicker
+            inline
+            value={editOcc.date}
+            today={todayStr}
+            locale={locale}
+            todayLabel={t.booker.today}
+            prevLabel={t.booker.prevMonth}
+            nextLabel={t.booker.nextMonth}
+            onSelect={changeEditDate}
+          />
+          <div className="mt-3">
+            {slotsLoading ? (
+              <p className="text-xs text-muted">{t.booker.loading}</p>
+            ) : slots.length === 0 ? (
+              <p className="text-xs text-muted">{t.booker.noSlots}</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                {slots.map((s) => (
+                  <button
+                    key={s.iso}
+                    onClick={() =>
+                      setEditOcc({ ...editOcc, selectedIso: s.iso })
+                    }
+                    className={cn(
+                      "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
+                      editOcc.selectedIso === s.iso
+                        ? "border-gold bg-gold font-semibold text-black"
+                        : "border-border text-foreground hover:border-gold/40",
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              onClick={saveEditOcc}
+              disabled={isPending || !editOcc.selectedIso}
+              className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
+            >
+              <Check className="size-3.5" />
+              {d.save}
+            </button>
+            <button
+              onClick={() => {
+                setEditOcc(null);
+                setSlots([]);
+              }}
+              disabled={isPending}
+              className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
+            >
+              {d.cancel}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div
+        key={b.id}
+        className="flex items-center justify-between gap-3 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2"
+      >
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">
+            {b.serviceName ?? "—"}
+          </p>
+          <p className="truncate text-xs text-muted">
+            {formatDateTime(b.startsAtIso, tz, locale)}
+            {b.staffName ? ` · ${b.staffName}` : ""}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-xs tabular-nums text-muted">
+            {formatPrice(b.priceCents, locale)}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => startEditOcc(b.id, b.startsAtIso)}
+              disabled={isPending}
+              aria-label={t.booker.reschedule}
+              className="text-muted transition-colors hover:text-gold disabled:opacity-40"
+            >
+              <Pencil className="size-4" />
+            </button>
+            <button
+              onClick={() => cancelOccurrence(b.id)}
+              disabled={isPending}
+              aria-label={t.booker.cancelAppt}
+              className="text-muted transition-colors hover:text-danger disabled:opacity-40"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // A past / cancelled / completed appointment: read-only.
+  const renderPastRow = (b: CustomerBooking) => (
+    <div
+      key={b.id}
+      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">
+          {b.serviceName ?? "—"}
+        </p>
+        <p className="truncate text-xs text-muted">
+          {formatDateTime(b.startsAtIso, tz, locale)}
+          {b.staffName ? ` · ${b.staffName}` : ""}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-medium",
+            STATUS_TONE[b.status] ?? "bg-surface-2 text-muted",
+          )}
+        >
+          {(t.status as Record<string, string>)[b.status] ?? b.status}
+        </span>
+        <span className="text-xs tabular-nums text-muted">
+          {formatPrice(b.priceCents, locale)}
+        </span>
+      </div>
+    </div>
+  );
+
+  const isUpcoming = (b: CustomerBooking) =>
+    (b.status === "pending" || b.status === "confirmed") &&
+    Date.parse(b.startsAtIso) >= nowMs;
+
   return (
     <div className="space-y-5">
       {/* Toolbar */}
@@ -375,6 +520,12 @@ export function CustomersManager({
                     <span className="inline-flex items-center gap-1">
                       <Phone className="size-3" />
                       {c.phone}
+                    </span>
+                  )}
+                  {c.email && (
+                    <span className="inline-flex items-center gap-1">
+                      <Mail className="size-3" />
+                      {c.email}
                     </span>
                   )}
                   <span>{t.visitsN.replace("{n}", String(c.visits))}</span>
@@ -623,159 +774,53 @@ export function CustomersManager({
                     )}
                   </div>
 
-                  {/* History */}
+                  {/* Upcoming appointments (editable) */}
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-foreground">
-                      {t.historyTitle}
+                      {t.booker.upcomingTitle}
                     </h4>
                     {rowError && (
                       <p className="mb-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                         {rowError}
                       </p>
                     )}
-                    {detail.bookings.length === 0 ? (
-                      <p className="text-sm text-muted">{t.historyEmpty}</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {detail.bookings.map((b) => {
-                          const upcoming =
-                            (b.status === "pending" ||
-                              b.status === "confirmed") &&
-                            Date.parse(b.startsAtIso) >= nowMs;
-
-                          if (editOcc?.id === b.id) {
-                            return (
-                              <div
-                                key={b.id}
-                                className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
-                              >
-                                <DatePicker
-                                  inline
-                                  value={editOcc.date}
-                                  today={todayStr}
-                                  locale={locale}
-                                  todayLabel={t.booker.today}
-                                  prevLabel={t.booker.prevMonth}
-                                  nextLabel={t.booker.nextMonth}
-                                  onSelect={changeEditDate}
-                                />
-                                <div className="mt-3">
-                                  {slotsLoading ? (
-                                    <p className="text-xs text-muted">
-                                      {t.booker.loading}
-                                    </p>
-                                  ) : slots.length === 0 ? (
-                                    <p className="text-xs text-muted">
-                                      {t.booker.noSlots}
-                                    </p>
-                                  ) : (
-                                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                                      {slots.map((s) => (
-                                        <button
-                                          key={s.iso}
-                                          onClick={() =>
-                                            setEditOcc({
-                                              ...editOcc,
-                                              selectedIso: s.iso,
-                                            })
-                                          }
-                                          className={cn(
-                                            "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
-                                            editOcc.selectedIso === s.iso
-                                              ? "border-gold bg-gold font-semibold text-black"
-                                              : "border-border text-foreground hover:border-gold/40",
-                                          )}
-                                        >
-                                          {s.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="mt-3 flex items-center gap-2">
-                                  <button
-                                    onClick={saveEditOcc}
-                                    disabled={isPending || !editOcc.selectedIso}
-                                    className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
-                                  >
-                                    <Check className="size-3.5" />
-                                    {d.save}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditOcc(null);
-                                      setSlots([]);
-                                    }}
-                                    disabled={isPending}
-                                    className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
-                                  >
-                                    {d.cancel}
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div
-                              key={b.id}
-                              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-foreground">
-                                  {b.serviceName ?? "—"}
-                                </p>
-                                <p className="truncate text-xs text-muted">
-                                  {formatDateTime(b.startsAtIso, tz, locale)}
-                                  {b.staffName ? ` · ${b.staffName}` : ""}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-3">
-                                <div className="flex flex-col items-end gap-1">
-                                  <span
-                                    className={cn(
-                                      "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                      STATUS_TONE[b.status] ??
-                                        "bg-surface-2 text-muted",
-                                    )}
-                                  >
-                                    {(t.status as Record<string, string>)[
-                                      b.status
-                                    ] ?? b.status}
-                                  </span>
-                                  <span className="text-xs tabular-nums text-muted">
-                                    {formatPrice(b.priceCents, locale)}
-                                  </span>
-                                </div>
-                                {upcoming && (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() =>
-                                        startEditOcc(b.id, b.startsAtIso)
-                                      }
-                                      disabled={isPending}
-                                      aria-label={t.booker.reschedule}
-                                      className="text-muted transition-colors hover:text-gold disabled:opacity-40"
-                                    >
-                                      <Pencil className="size-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => cancelOccurrence(b.id)}
-                                      disabled={isPending}
-                                      aria-label={t.booker.cancelAppt}
-                                      className="text-muted transition-colors hover:text-danger disabled:opacity-40"
-                                    >
-                                      <Trash2 className="size-4" />
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {(() => {
+                      const upcomingList = detail.bookings
+                        .filter(isUpcoming)
+                        .sort((a, b) =>
+                          a.startsAtIso.localeCompare(b.startsAtIso),
+                        );
+                      if (upcomingList.length === 0)
+                        return (
+                          <p className="text-sm text-muted">
+                            {t.booker.upcomingEmpty}
+                          </p>
+                        );
+                      return (
+                        <div className="space-y-2">
+                          {upcomingList.map((b) => renderUpcomingRow(b))}
+                        </div>
+                      );
+                    })()}
                   </div>
+
+                  {/* Past history (read-only) */}
+                  {(() => {
+                    const pastList = detail.bookings.filter(
+                      (b) => !isUpcoming(b),
+                    );
+                    if (pastList.length === 0) return null;
+                    return (
+                      <div>
+                        <h4 className="mb-2 text-sm font-semibold text-foreground">
+                          {t.historyTitle}
+                        </h4>
+                        <div className="space-y-2">
+                          {pastList.map((b) => renderPastRow(b))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
