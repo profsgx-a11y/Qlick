@@ -260,14 +260,29 @@ export function CustomersManager({
 
   const cancelOccurrence = (bookingId: string) => {
     if (!detail) return;
+    const custId = detail.id;
     setRowError(null);
+    // Optimistic: mark this one booking cancelled locally — no full reload.
+    setDetail((dd) =>
+      dd
+        ? {
+            ...dd,
+            bookings: dd.bookings.map((b) =>
+              b.id === bookingId ? { ...b, status: "cancelled" } : b,
+            ),
+          }
+        : dd,
+    );
+    setCustomers((cs) =>
+      cs.map((c) =>
+        c.id === custId ? { ...c, upcoming: Math.max(0, c.upcoming - 1) } : c,
+      ),
+    );
     startTransition(async () => {
       const res = await cancelSeriesBooking(locale, bookingId);
-      if (res.ok) {
-        void openDetail(detail.id);
-        refresh(search);
-      } else {
+      if (!res.ok) {
         setRowError(dashErr(d.errors, res.error, d.genericError));
+        void openDetail(custId); // resync only if it failed
       }
     });
   };
@@ -318,15 +333,26 @@ export function CustomersManager({
   const saveEditOcc = () => {
     if (!editOcc || !editOcc.selectedIso || !detail) return;
     const { id, selectedIso } = editOcc;
+    const custId = detail.id;
     setRowError(null);
+    setEditOcc(null);
+    setSlots([]);
+    // Optimistic: move this booking's time locally, then re-sort in render.
+    setDetail((dd) =>
+      dd
+        ? {
+            ...dd,
+            bookings: dd.bookings.map((b) =>
+              b.id === id ? { ...b, startsAtIso: selectedIso } : b,
+            ),
+          }
+        : dd,
+    );
     startTransition(async () => {
       const res = await rescheduleSeriesBooking(locale, id, selectedIso);
-      if (res.ok) {
-        setEditOcc(null);
-        void openDetail(detail.id);
-        refresh(search);
-      } else {
+      if (!res.ok) {
         setRowError(dashErr(d.errors, res.error, d.genericError));
+        void openDetail(custId); // resync only if it failed
       }
     });
   };
