@@ -7,8 +7,14 @@ import {
   buildDayWindow,
   isWithinOpenHours,
   minutesFromMidnight,
+  addDaysStr,
 } from "@/lib/calendar";
-import type { DayHours, Closure } from "@/lib/availability";
+import {
+  computeStaffAwareSlots,
+  type DayHours,
+  type Closure,
+  type StaffBusy,
+} from "@/lib/availability";
 import {
   computeOccurrenceDates,
   occurrenceStartIso,
@@ -613,6 +619,182 @@ export async function endSeries(
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   return { ok: true, cancelled: (cancelledRows ?? []).length };
+}
+
+/** Available start times for a NEW booking of a service on a given day. */
+export async function availableNewSlots(input: {
+  serviceId: string;
+  staffId: string | null;
+  date: string; // YYYY-MM-DD (business tz)
+}): Promise<{
+  ok: boolean;
+  error?: string;
+  slots?: { iso: string; label: string }[];
+}> {
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, tz } = ctx;
+
+  const svc = await loadService(supabase, businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+
+  // Capable, active staff for this service.
+  const { data: capable } = await supabase
+    .from("service_staff")
+    .select("staff_id, staff:staff!inner(id, business_id, is_active)")
+    .eq("service_id", input.serviceId);
+  const capableStaffIds = (capable ?? [])
+    .filter((r) => {
+      const s = r.staff as { business_id: string; is_active: boolean } | null;
+      return s?.business_id === businessId && s.is_active;
+    })
+    .map((r) => r.staff_id);
+
+  const [{ data: hours }, { data: closures }, { data: busyRows }] =
+    await Promise.all([
+      supabase
+        .from("business_hours")
+        .select("day_of_week, is_closed, open_time, close_time")
+        .eq("business_id", businessId),
+      supabase
+        .from("business_closures")
+        .select("date, is_closed, special_open_time, special_close_time")
+        .eq("business_id", businessId)
+        .eq("date", input.date),
+      supabase
+        .from("bookings")
+        .select("staff_id, starts_at, ends_at")
+        .eq("business_id", businessId)
+        .in("status", ACTIVE)
+        .gte("starts_at", `${addDaysStr(input.date, -1)}T00:00:00Z`)
+        .lte("starts_at", `${addDaysStr(input.date, 1)}T23:59:59Z`),
+    ]);
+
+  const staffBusy: StaffBusy[] = (busyRows ?? []).map((b) => ({
+    staffId: b.staff_id,
+    startsAt: b.starts_at,
+    endsAt: b.ends_at,
+  }));
+
+  const shRows = capableStaffIds.length
+    ? (
+        await supabase
+          .from("staff_hours")
+          .select("staff_id, day_of_week, open_time, close_time")
+          .in("staff_id", capableStaffIds)
+      ).data ?? []
+    : [];
+  const staffHours: Record<
+    string,
+    Record<number, { open: string; close: string }[]>
+  > = {};
+  const customStaffIds: string[] = [];
+  for (const r of shRows) {
+    if (!staffHours[r.staff_id]) {
+      staffHours[r.staff_id] = {};
+      customStaffIds.push(r.staff_id);
+    }
+    (staffHours[r.staff_id][r.day_of_week] ??= []).push({
+      open: r.open_time,
+      close: r.close_time,
+    });
+  }
+
+  const slots = computeStaffAwareSlots({
+    date: input.date,
+    timeZone: tz,
+    hours: (hours ?? []) as DayHours[],
+    closures: (closures ?? []) as Closure[],
+    durationMinutes: svc.duration_minutes,
+    staffBusy,
+    capableStaffIds,
+    selectedStaffId: input.staffId,
+    staffHours,
+    customStaffIds,
+  });
+
+  return { ok: true, slots: slots.map((s) => ({ iso: s.iso, label: s.label })) };
+}
+
+/** Book a single appointment for a customer card at a chosen slot. */
+export async function bookCustomerAppointment(
+  locale: string,
+  input: {
+    businessCustomerId: string;
+    serviceId: string;
+    staffId: string | null;
+    startIso: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, userId, tz } = ctx;
+
+  const svc = await loadService(supabase, businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+
+  if (input.staffId) {
+    const { data: st } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("id", input.staffId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (!st) return { ok: false, error: "invalid_staff" };
+  }
+
+  const { data: card } = await supabase
+    .from("business_customers")
+    .select("id, first_name, last_name, phone")
+    .eq("id", input.businessCustomerId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!card) return { ok: false, error: "not_found" };
+
+  const startMs = new Date(input.startIso).getTime();
+  if (Number.isNaN(startMs)) return { ok: false, error: "invalid_time" };
+
+  const dateStr = localDate(input.startIso, tz);
+  const evalCtx = await loadEvalContext(
+    ctx,
+    svc.duration_minutes,
+    [dateStr],
+    [input.startIso],
+  );
+  const status = evalOccurrence(dateStr, input.startIso, input.staffId, evalCtx);
+  if (status === "closed") return { ok: false, error: "outside_hours" };
+  if (status === "busy") return { ok: false, error: "staff_busy" };
+  if (status === "past") return { ok: false, error: "invalid_time" };
+
+  const endIso = new Date(
+    startMs + svc.duration_minutes * 60_000,
+  ).toISOString();
+  const customerName =
+    [card.first_name, card.last_name].filter(Boolean).join(" ").trim() || null;
+
+  const { error } = await supabase.from("bookings").insert({
+    business_id: businessId,
+    customer_id: userId,
+    business_customer_id: card.id,
+    service_id: svc.id,
+    staff_id: input.staffId,
+    starts_at: input.startIso,
+    ends_at: endIso,
+    status: "confirmed",
+    source: "dashboard",
+    no_staff_preference: !input.staffId,
+    customer_name: customerName,
+    customer_phone: card.phone,
+    price_cents: svc.price_cents,
+    service_name: svc.name,
+  });
+  if (error) return { ok: false, error: "create_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
 }
 
 function localDate(iso: string, tz: string): string {

@@ -12,7 +12,7 @@ import {
   Users,
   BadgeCheck,
   CalendarClock,
-  Repeat,
+  CalendarPlus,
   Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -34,20 +34,18 @@ import {
   deleteCustomer,
   type CustomerListItem,
   type CustomerDetail,
-  type CustomerSeries,
 } from "./actions";
 import {
-  endSeries,
   cancelSeriesBooking,
   rescheduleSeriesBooking,
 } from "./recurring-actions";
 import { DatePicker } from "../calendar/date-picker";
 import { availableMoveSlots } from "../calendar/actions";
 import {
-  RecurringBuilder,
+  AppointmentBooker,
   type ServiceOption,
   type StaffOption,
-} from "./recurring-builder";
+} from "./appointment-booker";
 
 interface Props {
   locale: string;
@@ -85,6 +83,7 @@ export function CustomersManager({
 
   const [customers, setCustomers] = useState<CustomerListItem[]>(initialCustomers);
   const [search, setSearch] = useState("");
+  const [nowMs] = useState(() => Date.now());
   const [isPending, startTransition] = useTransition();
 
   // Add / edit form
@@ -101,8 +100,8 @@ export function CustomersManager({
   const [noteSaved, setNoteSaved] = useState(false);
 
   const [confirmDel, setConfirmDel] = useState<CustomerDetail | null>(null);
-  const [showRecurring, setShowRecurring] = useState(false);
-  const [manageSeries, setManageSeries] = useState<CustomerSeries | null>(null);
+  const [showBooker, setShowBooker] = useState(false);
+  // Inline reschedule of a single upcoming appointment in the history list.
   const [editOcc, setEditOcc] = useState<{
     id: string;
     date: string;
@@ -110,10 +109,7 @@ export function CustomersManager({
   } | null>(null);
   const [slots, setSlots] = useState<{ iso: string; label: string }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [manageError, setManageError] = useState<string | null>(null);
-  const [confirmEndSeries, setConfirmEndSeries] = useState<CustomerSeries | null>(
-    null,
-  );
+  const [rowError, setRowError] = useState<string | null>(null);
 
   const refresh = useCallback(
     (q: string) => {
@@ -228,53 +224,16 @@ export function CustomersManager({
   const displayName = (c: { firstName: string | null; lastName: string | null }) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || t.noName;
 
-  const seriesLabel = (s: CustomerSeries): string => {
-    const tr = t.recurring;
-    const wd = (tr.weekdays as string[])[s.weekday ?? 0] ?? "";
-    const n = s.intervalN;
-    const freq =
-      s.patternType === "weekly"
-        ? n === 1
-          ? tr.weeklyOne
-          : tr.weeklyEvery.replace("{n}", String(n))
-        : n === 1
-          ? tr.monthlyOne
-          : tr.monthlyEvery.replace("{n}", String(n));
-    if (s.patternType === "weekly")
-      return `${freq} · ${wd} ${s.timeOfDay}`;
-    if (s.patternType === "monthly_dom")
-      return `${freq} · ${tr.dayShort} ${s.dayOfMonth} · ${s.timeOfDay}`;
-    const nthLabel =
-      s.nth === -1
-        ? (tr.nthOptions as string[])[5]
-        : (tr.nthOptions as string[])[(s.nth ?? 1) - 1];
-    return `${freq} · ${nthLabel} ${wd} · ${s.timeOfDay}`;
-  };
-
-  const doEndSeries = () => {
-    if (!confirmEndSeries || !detail) return;
-    const id = confirmEndSeries.id;
-    setConfirmEndSeries(null);
-    setManageSeries(null);
-    startTransition(async () => {
-      const res = await endSeries(locale, id);
-      if (res.ok) {
-        void openDetail(detail.id);
-        refresh(search);
-      }
-    });
-  };
-
   const cancelOccurrence = (bookingId: string) => {
     if (!detail) return;
-    setManageError(null);
+    setRowError(null);
     startTransition(async () => {
       const res = await cancelSeriesBooking(locale, bookingId);
       if (res.ok) {
         void openDetail(detail.id);
         refresh(search);
       } else {
-        setManageError(dashErr(d.errors, res.error, d.genericError));
+        setRowError(dashErr(d.errors, res.error, d.genericError));
       }
     });
   };
@@ -286,7 +245,7 @@ export function CustomersManager({
       month: "2-digit",
       day: "2-digit",
     }).format(new Date(iso));
-  const todayStr = dateForInput(new Date().toISOString());
+  const todayStr = dateForInput(new Date(nowMs).toISOString());
 
   const loadSlots = (bookingId: string, date: string, keepIso: string | null) => {
     setSlotsLoading(true);
@@ -310,7 +269,7 @@ export function CustomersManager({
   };
 
   const startEditOcc = (bookingId: string, startsAtIso: string) => {
-    setManageError(null);
+    setRowError(null);
     const date = dateForInput(startsAtIso);
     setEditOcc({ id: bookingId, date, selectedIso: startsAtIso });
     loadSlots(bookingId, date, startsAtIso);
@@ -325,7 +284,7 @@ export function CustomersManager({
   const saveEditOcc = () => {
     if (!editOcc || !editOcc.selectedIso || !detail) return;
     const { id, selectedIso } = editOcc;
-    setManageError(null);
+    setRowError(null);
     startTransition(async () => {
       const res = await rescheduleSeriesBooking(locale, id, selectedIso);
       if (res.ok) {
@@ -333,7 +292,7 @@ export function CustomersManager({
         void openDetail(detail.id);
         refresh(search);
       } else {
-        setManageError(dashErr(d.errors, res.error, d.genericError));
+        setRowError(dashErr(d.errors, res.error, d.genericError));
       }
     });
   };
@@ -647,64 +606,20 @@ export function CustomersManager({
                     </div>
                   </div>
 
-                  {/* Recurring series */}
+                  {/* Book a new appointment */}
                   <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        {t.recurring.sectionTitle}
-                      </h4>
-                      <button
-                        onClick={() => setShowRecurring(true)}
-                        disabled={services.length === 0}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold/10 px-2.5 py-1 text-xs font-medium text-gold ring-1 ring-inset ring-gold/20 transition-colors hover:bg-gold/15 disabled:opacity-40"
-                      >
-                        <Repeat className="size-3.5" />
-                        {t.recurring.new}
-                      </button>
-                    </div>
-                    {detail.series.length === 0 ? (
-                      <p className="text-xs text-muted">
-                        {services.length === 0
-                          ? t.recurring.needService
-                          : t.recurring.none}
+                    <button
+                      onClick={() => setShowBooker(true)}
+                      disabled={services.length === 0}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/10 px-3 py-2.5 text-sm font-semibold text-gold transition-colors hover:bg-gold/15 disabled:opacity-40"
+                    >
+                      <CalendarPlus className="size-4" />
+                      {t.booker.title}
+                    </button>
+                    {services.length === 0 && (
+                      <p className="mt-1.5 text-xs text-muted">
+                        {t.booker.needService}
                       </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {detail.series.map((s) => (
-                          <div
-                            key={s.id}
-                            className="flex items-center justify-between gap-3 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {s.serviceName ?? "—"}
-                              </p>
-                              <p className="truncate text-xs text-muted">
-                                {seriesLabel(s)}
-                              </p>
-                              {s.nextIso && (
-                                <p className="truncate text-[11px] text-gold/80">
-                                  {t.recurring.next.replace(
-                                    "{d}",
-                                    formatDateTime(s.nextIso, tz, locale),
-                                  )}
-                                </p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => {
-                                setEditOcc(null);
-                                setManageError(null);
-                                setManageSeries(s);
-                              }}
-                              className="inline-flex shrink-0 items-center gap-1 text-xs text-gold hover:text-gold/80"
-                            >
-                              <Pencil className="size-3.5" />
-                              {t.recurring.manage}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
                     )}
                   </div>
 
@@ -713,41 +628,150 @@ export function CustomersManager({
                     <h4 className="mb-2 text-sm font-semibold text-foreground">
                       {t.historyTitle}
                     </h4>
+                    {rowError && (
+                      <p className="mb-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+                        {rowError}
+                      </p>
+                    )}
                     {detail.bookings.length === 0 ? (
                       <p className="text-sm text-muted">{t.historyEmpty}</p>
                     ) : (
                       <div className="space-y-2">
-                        {detail.bookings.map((b) => (
-                          <div
-                            key={b.id}
-                            className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">
-                                {b.serviceName ?? "—"}
-                              </p>
-                              <p className="truncate text-xs text-muted">
-                                {formatDateTime(b.startsAtIso, tz, locale)}
-                                {b.staffName ? ` · ${b.staffName}` : ""}
-                              </p>
-                            </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1">
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                  STATUS_TONE[b.status] ?? "bg-surface-2 text-muted",
-                                )}
+                        {detail.bookings.map((b) => {
+                          const upcoming =
+                            (b.status === "pending" ||
+                              b.status === "confirmed") &&
+                            Date.parse(b.startsAtIso) >= nowMs;
+
+                          if (editOcc?.id === b.id) {
+                            return (
+                              <div
+                                key={b.id}
+                                className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
                               >
-                                {(t.status as Record<string, string>)[
-                                  b.status
-                                ] ?? b.status}
-                              </span>
-                              <span className="text-xs tabular-nums text-muted">
-                                {formatPrice(b.priceCents, locale)}
-                              </span>
+                                <DatePicker
+                                  value={editOcc.date}
+                                  today={todayStr}
+                                  locale={locale}
+                                  todayLabel={t.booker.today}
+                                  prevLabel={t.booker.prevMonth}
+                                  nextLabel={t.booker.nextMonth}
+                                  onSelect={changeEditDate}
+                                />
+                                <div className="mt-3">
+                                  {slotsLoading ? (
+                                    <p className="text-xs text-muted">
+                                      {t.booker.loading}
+                                    </p>
+                                  ) : slots.length === 0 ? (
+                                    <p className="text-xs text-muted">
+                                      {t.booker.noSlots}
+                                    </p>
+                                  ) : (
+                                    <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                                      {slots.map((s) => (
+                                        <button
+                                          key={s.iso}
+                                          onClick={() =>
+                                            setEditOcc({
+                                              ...editOcc,
+                                              selectedIso: s.iso,
+                                            })
+                                          }
+                                          className={cn(
+                                            "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
+                                            editOcc.selectedIso === s.iso
+                                              ? "border-gold bg-gold font-semibold text-black"
+                                              : "border-border text-foreground hover:border-gold/40",
+                                          )}
+                                        >
+                                          {s.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="mt-3 flex items-center gap-2">
+                                  <button
+                                    onClick={saveEditOcc}
+                                    disabled={isPending || !editOcc.selectedIso}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
+                                  >
+                                    <Check className="size-3.5" />
+                                    {d.save}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setEditOcc(null);
+                                      setSlots([]);
+                                    }}
+                                    disabled={isPending}
+                                    className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
+                                  >
+                                    {d.cancel}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={b.id}
+                              className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                  {b.serviceName ?? "—"}
+                                </p>
+                                <p className="truncate text-xs text-muted">
+                                  {formatDateTime(b.startsAtIso, tz, locale)}
+                                  {b.staffName ? ` · ${b.staffName}` : ""}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center gap-3">
+                                <div className="flex flex-col items-end gap-1">
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                      STATUS_TONE[b.status] ??
+                                        "bg-surface-2 text-muted",
+                                    )}
+                                  >
+                                    {(t.status as Record<string, string>)[
+                                      b.status
+                                    ] ?? b.status}
+                                  </span>
+                                  <span className="text-xs tabular-nums text-muted">
+                                    {formatPrice(b.priceCents, locale)}
+                                  </span>
+                                </div>
+                                {upcoming && (
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() =>
+                                        startEditOcc(b.id, b.startsAtIso)
+                                      }
+                                      disabled={isPending}
+                                      aria-label={t.booker.reschedule}
+                                      className="text-muted transition-colors hover:text-gold disabled:opacity-40"
+                                    >
+                                      <Pencil className="size-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => cancelOccurrence(b.id)}
+                                      disabled={isPending}
+                                      aria-label={t.booker.cancelAppt}
+                                      className="text-muted transition-colors hover:text-danger disabled:opacity-40"
+                                    >
+                                      <Trash2 className="size-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -794,203 +818,18 @@ export function CustomersManager({
         />
       )}
 
-      {confirmEndSeries && (
-        <ConfirmDialog
-          title={t.recurring.endTitle}
-          message={t.recurring.endConfirm}
-          confirmLabel={t.recurring.end}
-          danger
-          pending={isPending}
-          onConfirm={doEndSeries}
-          onCancel={() => setConfirmEndSeries(null)}
-        />
-      )}
-
-      {showRecurring && detail && (
-        <RecurringBuilder
+      {showBooker && detail && (
+        <AppointmentBooker
           locale={locale}
           tz={tz}
           businessCustomerId={detail.id}
           services={services}
           staff={staff}
-          onClose={() => setShowRecurring(false)}
-          onCreated={() => void openDetail(detail.id)}
+          onClose={() => setShowBooker(false)}
+          onBooked={() => void openDetail(detail.id)}
         />
       )}
 
-      {manageSeries && detail && (
-        <>
-          <div
-            className="fixed inset-0 z-[80] bg-black/50"
-            onClick={() => {
-              setManageSeries(null);
-              setEditOcc(null);
-              setManageError(null);
-            }}
-          />
-          <div className="fixed left-1/2 top-1/2 z-[90] flex max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
-            <div className="border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-lg font-bold text-foreground">
-                  {t.recurring.manageTitle}
-                </h3>
-                <button
-                  onClick={() => {
-                    setManageSeries(null);
-                    setEditOcc(null);
-                    setManageError(null);
-                  }}
-                  className="text-muted hover:text-foreground"
-                  aria-label={d.close}
-                >
-                  <X className="size-5" />
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-muted">
-                {manageSeries.serviceName} · {seriesLabel(manageSeries)}
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {manageError && (
-                <p className="mb-3 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-                  {manageError}
-                </p>
-              )}
-              {(() => {
-                const occ = detail.bookings
-                  .filter(
-                    (b) =>
-                      b.seriesId === manageSeries.id &&
-                      (b.status === "pending" || b.status === "confirmed") &&
-                      Date.parse(b.startsAtIso) >= Date.now(),
-                  )
-                  .sort((a, b) => a.startsAtIso.localeCompare(b.startsAtIso));
-                if (occ.length === 0)
-                  return (
-                    <p className="text-sm text-muted">{t.recurring.occEmpty}</p>
-                  );
-                return (
-                  <div className="space-y-2">
-                    {occ.map((b) =>
-                      editOcc?.id === b.id ? (
-                        <div
-                          key={b.id}
-                          className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
-                        >
-                          <DatePicker
-                            value={editOcc.date}
-                            today={todayStr}
-                            locale={locale}
-                            todayLabel={t.recurring.today}
-                            prevLabel={t.recurring.prevMonth}
-                            nextLabel={t.recurring.nextMonth}
-                            onSelect={changeEditDate}
-                          />
-                          <div className="mt-3">
-                            {slotsLoading ? (
-                              <p className="text-xs text-muted">
-                                {t.recurring.previewing}
-                              </p>
-                            ) : slots.length === 0 ? (
-                              <p className="text-xs text-muted">
-                                {t.recurring.noSlots}
-                              </p>
-                            ) : (
-                              <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                                {slots.map((s) => (
-                                  <button
-                                    key={s.iso}
-                                    onClick={() =>
-                                      setEditOcc({
-                                        ...editOcc,
-                                        selectedIso: s.iso,
-                                      })
-                                    }
-                                    className={cn(
-                                      "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
-                                      editOcc.selectedIso === s.iso
-                                        ? "border-gold bg-gold font-semibold text-black"
-                                        : "border-border text-foreground hover:border-gold/40",
-                                    )}
-                                  >
-                                    {s.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <div className="mt-3 flex items-center gap-2">
-                            <button
-                              onClick={saveEditOcc}
-                              disabled={isPending || !editOcc.selectedIso}
-                              className="inline-flex items-center gap-1 rounded-lg bg-gold px-3 py-1.5 text-xs font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
-                            >
-                              <Check className="size-3.5" />
-                              {d.save}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditOcc(null);
-                                setSlots([]);
-                              }}
-                              disabled={isPending}
-                              className="rounded-lg px-3 py-1.5 text-xs text-muted hover:text-foreground"
-                            >
-                              {d.cancel}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          key={b.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2/30 px-3 py-2"
-                        >
-                          <span className="text-sm text-foreground">
-                            {formatDateTime(b.startsAtIso, tz, locale)}
-                          </span>
-                          <div className="flex shrink-0 items-center gap-3">
-                            <button
-                              onClick={() => startEditOcc(b.id, b.startsAtIso)}
-                              disabled={isPending}
-                              aria-label={t.recurring.occEdit}
-                              className="text-muted transition-colors hover:text-gold disabled:opacity-40"
-                            >
-                              <Pencil className="size-4" />
-                            </button>
-                            <button
-                              onClick={() => cancelOccurrence(b.id)}
-                              disabled={isPending}
-                              aria-label={t.recurring.occCancel}
-                              className="text-muted transition-colors hover:text-danger disabled:opacity-40"
-                            >
-                              <Trash2 className="size-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ),
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-
-            <div className="border-t border-border px-5 py-4">
-              <button
-                onClick={() => {
-                  const s = manageSeries;
-                  setManageSeries(null);
-                  setConfirmEndSeries(s);
-                }}
-                className="inline-flex items-center gap-1.5 text-sm text-danger hover:text-danger/80"
-              >
-                <Trash2 className="size-4" />
-                {t.recurring.endAll}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

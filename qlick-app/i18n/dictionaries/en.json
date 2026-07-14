@@ -1013,6 +1013,26 @@
         "cancelled": "Cancelled",
         "no_show": "No-show"
       },
+      "booker": {
+        "title": "New appointment",
+        "service": "Service",
+        "staff": "Staff",
+        "anyStaff": "Anyone",
+        "day": "Day",
+        "times": "Available times",
+        "loading": "Loading…",
+        "noSlots": "No available times on this day.",
+        "book": "Book appointment",
+        "booking": "Booking…",
+        "bookedN": "Booked {n} appointment(s)",
+        "done": "Done",
+        "needService": "Add a service first to book appointments.",
+        "today": "Today",
+        "prevMonth": "Previous month",
+        "nextMonth": "Next month",
+        "reschedule": "Change date/time",
+        "cancelAppt": "Cancel appointment"
+      },
       "recurring": {
         "title": "Recurring appointment",
         "service": "Service",
