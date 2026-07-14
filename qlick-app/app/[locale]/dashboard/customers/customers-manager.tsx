@@ -875,15 +875,15 @@ export function CustomersManager({
         />
       )}
 
-      {showBooker && detail && (
+      {showBooker && detailId && (
         <AppointmentBooker
           locale={locale}
           tz={tz}
-          businessCustomerId={detail.id}
+          businessCustomerId={detailId}
           services={services}
           staff={staff}
           onClose={() => setShowBooker(false)}
-          onBooked={() => void openDetail(detail.id)}
+          onBooked={() => void openDetail(detailId)}
         />
       )}
 
