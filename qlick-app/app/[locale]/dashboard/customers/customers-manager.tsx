@@ -650,6 +650,7 @@ export function CustomersManager({
                                 className="rounded-lg border border-gold/30 bg-surface-2/40 px-3 py-3"
                               >
                                 <DatePicker
+                                  inline
                                   value={editOcc.date}
                                   today={todayStr}
                                   locale={locale}

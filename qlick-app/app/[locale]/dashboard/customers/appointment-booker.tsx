@@ -148,47 +148,50 @@ export function AppointmentBooker({
               </Field>
             </div>
 
-            <div>
-              <p className="mb-1.5 text-sm font-medium text-foreground">
-                {tb.day}
-              </p>
-              <DatePicker
-                value={date}
-                today={today}
-                locale={locale}
-                todayLabel={tb.today}
-                prevLabel={tb.prevMonth}
-                nextLabel={tb.nextMonth}
-                onSelect={setDate}
-              />
-            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-foreground">
+                  {tb.day}
+                </p>
+                <DatePicker
+                  inline
+                  value={date}
+                  today={today}
+                  locale={locale}
+                  todayLabel={tb.today}
+                  prevLabel={tb.prevMonth}
+                  nextLabel={tb.nextMonth}
+                  onSelect={setDate}
+                />
+              </div>
 
-            <div>
-              <p className="mb-1.5 text-sm font-medium text-foreground">
-                {tb.times}
-              </p>
-              {slotsLoading ? (
-                <p className="text-xs text-muted">{tb.loading}</p>
-              ) : slots.length === 0 ? (
-                <p className="text-xs text-muted">{tb.noSlots}</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
-                  {slots.map((s) => (
-                    <button
-                      key={s.iso}
-                      onClick={() => setSelectedIso(s.iso)}
-                      className={cn(
-                        "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
-                        selectedIso === s.iso
-                          ? "border-gold bg-gold font-semibold text-black"
-                          : "border-border text-foreground hover:border-gold/40",
-                      )}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div>
+                <p className="mb-1.5 text-sm font-medium text-foreground">
+                  {tb.times}
+                </p>
+                {slotsLoading ? (
+                  <p className="text-xs text-muted">{tb.loading}</p>
+                ) : slots.length === 0 ? (
+                  <p className="text-xs text-muted">{tb.noSlots}</p>
+                ) : (
+                  <div className="grid max-h-64 grid-cols-3 gap-1.5 overflow-y-auto sm:grid-cols-2">
+                    {slots.map((s) => (
+                      <button
+                        key={s.iso}
+                        onClick={() => setSelectedIso(s.iso)}
+                        className={cn(
+                          "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
+                          selectedIso === s.iso
+                            ? "border-gold bg-gold font-semibold text-black"
+                            : "border-border text-foreground hover:border-gold/40",
+                        )}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {error && (

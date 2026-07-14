@@ -25,6 +25,8 @@ interface DatePickerProps {
   prevLabel: string;
   nextLabel: string;
   onSelect: (date: string) => void;
+  /** Render the calendar always-visible in the flow (no popover trigger). */
+  inline?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export function DatePicker({
   prevLabel,
   nextLabel,
   onSelect,
+  inline = false,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const sel = parse(value);
@@ -111,6 +114,92 @@ export function DatePicker({
     onSelect(d);
   };
 
+  const panel = (
+    <>
+      {/* Month header */}
+      <div className="mb-2 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => shiftMonth(-1)}
+          aria-label={prevLabel}
+          className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2 hover:text-foreground"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <span className="text-sm font-semibold capitalize text-foreground">
+          {monthTitle}
+        </span>
+        <button
+          type="button"
+          onClick={() => shiftMonth(1)}
+          aria-label={nextLabel}
+          className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2 hover:text-foreground"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      {/* Weekday row */}
+      <div className="grid grid-cols-7">
+        {weekdays.map((w, i) => (
+          <span
+            key={i}
+            className="grid h-7 place-items-center text-[10px] font-semibold uppercase tracking-wide text-muted-2"
+          >
+            {w}
+          </span>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7">
+        {cells.map((c) => {
+          const isSelected = c.str === value;
+          const isToday = c.str === today;
+          return (
+            <button
+              key={c.str}
+              type="button"
+              onClick={() => pick(c.str)}
+              aria-current={isSelected ? "date" : undefined}
+              className={cn(
+                "m-0.5 grid size-8 place-items-center rounded-lg text-sm tabular-nums transition-[transform,background-color,color,box-shadow] duration-150 ease-[var(--ease-out)] hover:-translate-y-px active:scale-90",
+                isSelected
+                  ? "bg-gold font-semibold text-black [box-shadow:0_6px_18px_-6px_var(--gold-glow)]"
+                  : isToday
+                    ? "text-gold ring-1 ring-inset ring-gold/40 hover:bg-gold/10"
+                    : c.inMonth
+                      ? "text-foreground hover:bg-surface-2"
+                      : "text-muted-2 hover:bg-surface-2",
+              )}
+            >
+              {c.day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Jump to today */}
+      <button
+        type="button"
+        onClick={() => pick(today)}
+        className="mt-2 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:border-gold/40 hover:text-gold"
+      >
+        {todayLabel}
+      </button>
+    </>
+  );
+
+  // Inline: the calendar is part of the normal flow (no popover), so it never
+  // overlaps sibling content or forces the container to scroll unexpectedly.
+  if (inline) {
+    return (
+      <div className="w-full max-w-xs rounded-2xl border border-border bg-surface-2/40 p-3">
+        {panel}
+      </div>
+    );
+  }
+
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -129,77 +218,7 @@ export function DatePicker({
           role="dialog"
           className="animate-pop absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl border border-border bg-surface p-3 elev-card"
         >
-          {/* Month header */}
-          <div className="mb-2 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => shiftMonth(-1)}
-              aria-label={prevLabel}
-              className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2 hover:text-foreground"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="text-sm font-semibold capitalize text-foreground">
-              {monthTitle}
-            </span>
-            <button
-              type="button"
-              onClick={() => shiftMonth(1)}
-              aria-label={nextLabel}
-              className="grid size-8 place-items-center rounded-lg text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2 hover:text-foreground"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-
-          {/* Weekday row */}
-          <div className="grid grid-cols-7">
-            {weekdays.map((w, i) => (
-              <span
-                key={i}
-                className="grid h-7 place-items-center text-[10px] font-semibold uppercase tracking-wide text-muted-2"
-              >
-                {w}
-              </span>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7">
-            {cells.map((c) => {
-              const isSelected = c.str === value;
-              const isToday = c.str === today;
-              return (
-                <button
-                  key={c.str}
-                  type="button"
-                  onClick={() => pick(c.str)}
-                  aria-current={isSelected ? "date" : undefined}
-                  className={cn(
-                    "m-0.5 grid size-8 place-items-center rounded-lg text-sm tabular-nums transition-[transform,background-color,color,box-shadow] duration-150 ease-[var(--ease-out)] hover:-translate-y-px active:scale-90",
-                    isSelected
-                      ? "bg-gold font-semibold text-black [box-shadow:0_6px_18px_-6px_var(--gold-glow)]"
-                      : isToday
-                        ? "text-gold ring-1 ring-inset ring-gold/40 hover:bg-gold/10"
-                        : c.inMonth
-                          ? "text-foreground hover:bg-surface-2"
-                          : "text-muted-2 hover:bg-surface-2",
-                  )}
-                >
-                  {c.day}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Jump to today */}
-          <button
-            type="button"
-            onClick={() => pick(today)}
-            className="mt-2 w-full rounded-lg border border-border py-1.5 text-xs font-medium text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:border-gold/40 hover:text-gold"
-          >
-            {todayLabel}
-          </button>
+          {panel}
         </div>
       )}
     </div>
