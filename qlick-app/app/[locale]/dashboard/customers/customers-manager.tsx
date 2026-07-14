@@ -98,6 +98,8 @@ export function CustomersManager({
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [drawerWidth, setDrawerWidth] = useState(448); // px; drag left edge to resize
+  const [resizing, setResizing] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
 
@@ -128,6 +130,24 @@ export function CustomersManager({
     const id = setTimeout(() => refresh(search), 250);
     return () => clearTimeout(id);
   }, [search, refresh]);
+
+  // Drag the drawer's left edge to resize it horizontally.
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: MouseEvent) => {
+      const w = window.innerWidth - e.clientX;
+      setDrawerWidth(Math.max(340, Math.min(w, window.innerWidth - 32)));
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    document.body.style.userSelect = "none";
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = "";
+    };
+  }, [resizing]);
 
   const openAdd = () => {
     setEditingId(null);
@@ -675,7 +695,22 @@ export function CustomersManager({
             className="fixed inset-0 z-[60] bg-black/50"
             onClick={closeDetail}
           />
-          <div className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-border bg-surface shadow-2xl">
+          <div
+            style={{ width: drawerWidth }}
+            className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-[95vw] flex-col border-l border-border bg-surface shadow-2xl"
+          >
+            {/* Resize handle — drag the left edge to widen/narrow the card */}
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setResizing(true);
+              }}
+              className={cn(
+                "absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-ew-resize transition-colors sm:block",
+                resizing ? "bg-gold/40" : "bg-transparent hover:bg-gold/30",
+              )}
+              aria-hidden
+            />
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h3 className="font-display text-lg font-bold text-foreground">
                 {detail ? displayName(detail) : t.loading}
