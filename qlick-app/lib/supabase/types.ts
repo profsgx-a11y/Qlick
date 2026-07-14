@@ -107,6 +107,8 @@ export type Database = {
       bookings: {
         Row: {
           business_id: string
+          business_customer_id: string | null
+          series_id: string | null
           cancellation_reason: string | null
           cancelled_by: string | null
           completed_at: string | null
@@ -130,6 +132,8 @@ export type Database = {
         }
         Insert: {
           business_id: string
+          business_customer_id?: string | null
+          series_id?: string | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
           completed_at?: string | null
@@ -153,6 +157,8 @@ export type Database = {
         }
         Update: {
           business_id?: string
+          business_customer_id?: string | null
+          series_id?: string | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
           completed_at?: string | null
@@ -190,6 +196,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_business_customer_id_fkey"
+            columns: ["business_customer_id"]
+            isOneToOne: false
+            referencedRelation: "business_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_series"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -208,6 +228,67 @@ export type Database = {
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_customers: {
+        Row: {
+          business_id: string
+          created_at: string
+          customer_id: string | null
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          customer_id?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          customer_id?: string | null
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "my_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_customers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -732,6 +813,98 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "my_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_series: {
+        Row: {
+          business_customer_id: string | null
+          business_id: string
+          created_at: string
+          day_of_month: number | null
+          duration_minutes: number
+          id: string
+          interval_n: number
+          no_staff_preference: boolean
+          nth: number | null
+          pattern_type: string
+          price_cents: number
+          service_id: string | null
+          service_name: string | null
+          staff_id: string | null
+          status: string
+          time_of_day: string
+          updated_at: string
+          weekday: number | null
+        }
+        Insert: {
+          business_customer_id?: string | null
+          business_id: string
+          created_at?: string
+          day_of_month?: number | null
+          duration_minutes?: number
+          id?: string
+          interval_n?: number
+          no_staff_preference?: boolean
+          nth?: number | null
+          pattern_type: string
+          price_cents?: number
+          service_id?: string | null
+          service_name?: string | null
+          staff_id?: string | null
+          status?: string
+          time_of_day: string
+          updated_at?: string
+          weekday?: number | null
+        }
+        Update: {
+          business_customer_id?: string | null
+          business_id?: string
+          created_at?: string
+          day_of_month?: number | null
+          duration_minutes?: number
+          id?: string
+          interval_n?: number
+          no_staff_preference?: boolean
+          nth?: number | null
+          pattern_type?: string
+          price_cents?: number
+          service_id?: string | null
+          service_name?: string | null
+          staff_id?: string | null
+          status?: string
+          time_of_day?: string
+          updated_at?: string
+          weekday?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_series_business_customer_id_fkey"
+            columns: ["business_customer_id"]
+            isOneToOne: false
+            referencedRelation: "business_customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_series_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_series_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_series_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
@@ -1375,6 +1548,14 @@ export type Database = {
         Returns: boolean
       }
       business_plan_state: { Args: { p_business_id: string }; Returns: Json }
+      fill_business_customer_emails: {
+        Args: { p_business_id: string }
+        Returns: undefined
+      }
+      match_customer_account: {
+        Args: { p_business_id: string; p_phone: string; p_email: string }
+        Returns: string
+      }
       cancel_booking: { Args: { p_booking_id: string }; Returns: undefined }
       cancel_business_deletion: {
         Args: { p_business: string }

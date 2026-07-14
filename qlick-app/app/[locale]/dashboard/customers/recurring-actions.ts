@@ -1,0 +1,807 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { hasLocale } from "@/i18n/config";
+import {
+  buildDayWindow,
+  isWithinOpenHours,
+  minutesFromMidnight,
+  addDaysStr,
+} from "@/lib/calendar";
+import {
+  computeStaffAwareSlots,
+  type DayHours,
+  type Closure,
+  type StaffBusy,
+} from "@/lib/availability";
+import {
+  computeOccurrenceDates,
+  occurrenceStartIso,
+  type PatternType,
+} from "@/lib/recurrence";
+
+const ACTIVE = ["pending", "confirmed", "completed"];
+const MAX_OCCURRENCES = 12;
+
+export interface SeriesRuleInput {
+  businessCustomerId: string;
+  serviceId: string;
+  staffId: string | null;
+  patternType: PatternType;
+  intervalN: number;
+  weekday: number | null;
+  nth: number | null;
+  dayOfMonth: number | null;
+  timeOfDay: string; // "HH:MM"
+  startDate: string; // YYYY-MM-DD (business tz)
+  count: number;
+}
+
+export type OccurrenceStatus = "ok" | "closed" | "busy" | "past";
+
+export interface OccurrencePreview {
+  startIso: string;
+  endIso: string;
+  dateStr: string;
+  status: OccurrenceStatus;
+}
+
+interface Ctx {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  businessId: string;
+  userId: string;
+  tz: string;
+}
+
+async function getCtx(): Promise<Ctx | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: biz } = await supabase
+    .from("my_businesses")
+    .select("id, my_role, timezone")
+    .limit(1)
+    .maybeSingle();
+  if (!biz?.id || (biz.my_role !== "owner" && biz.my_role !== "manager"))
+    return null;
+  return {
+    supabase,
+    businessId: biz.id as string,
+    userId: user.id,
+    tz: (biz.timezone as string) || "Europe/Athens",
+  };
+}
+
+interface Interval {
+  s: number;
+  e: number;
+  staff: string | null;
+}
+
+/** In-memory peak-capacity check (mirrors the calendar walk-in guard). */
+function overCapacity(
+  intervals: Interval[],
+  capacity: number,
+  offs: { s: number; e: number; staff: string }[],
+  startMs: number,
+  endMs: number,
+  newStaffId: string | null,
+): boolean {
+  if (capacity === 0) return false;
+  const ivs: Interval[] = [
+    ...intervals.filter((b) => b.s < endMs && b.e > startMs),
+    { s: startMs, e: endMs, staff: newStaffId },
+  ];
+  const points = new Set<number>([startMs]);
+  for (const iv of ivs) if (iv.s > startMs && iv.s < endMs) points.add(iv.s);
+  for (const o of offs) if (o.s > startMs && o.s < endMs) points.add(o.s);
+  for (const t of points) {
+    const act = ivs.filter((iv) => iv.s <= t && iv.e > t);
+    const busyStaff = new Set(
+      act.filter((iv) => iv.staff).map((iv) => iv.staff),
+    );
+    const unassigned = act.filter((iv) => !iv.staff).length;
+    const demand = busyStaff.size + unassigned;
+    const offCount = new Set(
+      offs.filter((o) => o.s <= t && o.e > t).map((o) => o.staff),
+    ).size;
+    if (demand > capacity - offCount) return true;
+  }
+  return false;
+}
+
+interface EvalContext {
+  hours: DayHours[];
+  closuresByDate: Map<string, Closure[]>;
+  intervals: Interval[];
+  offs: { s: number; e: number; staff: string }[];
+  capacity: number;
+  durationMs: number;
+  tz: string;
+  nowMs: number;
+}
+
+function evalOccurrence(
+  dateStr: string,
+  startIso: string,
+  staffId: string | null,
+  ctx: EvalContext,
+): OccurrenceStatus {
+  const startMs = new Date(startIso).getTime();
+  const endMs = startMs + ctx.durationMs;
+  const endIso = new Date(endMs).toISOString();
+  if (startMs < ctx.nowMs) return "past";
+
+  const win = buildDayWindow(
+    dateStr,
+    ctx.tz,
+    ctx.hours,
+    ctx.closuresByDate.get(dateStr) ?? [],
+    [],
+  );
+  const sMin = minutesFromMidnight(startIso, ctx.tz);
+  const eMin = minutesFromMidnight(endIso, ctx.tz);
+  if (!isWithinOpenHours(sMin, eMin, win)) return "closed";
+
+  if (staffId) {
+    const clash = ctx.intervals.some(
+      (b) => b.staff === staffId && b.s < endMs && b.e > startMs,
+    );
+    if (clash) return "busy";
+  }
+  if (overCapacity(ctx.intervals, ctx.capacity, ctx.offs, startMs, endMs, staffId))
+    return "busy";
+  return "ok";
+}
+
+async function loadService(
+  supabase: Ctx["supabase"],
+  businessId: string,
+  serviceId: string,
+) {
+  const { data: svc } = await supabase
+    .from("services")
+    .select("id, name, price_cents, duration_minutes, is_active")
+    .eq("id", serviceId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  return svc && svc.is_active ? svc : null;
+}
+
+async function loadEvalContext(
+  ctx: Ctx,
+  durationMinutes: number,
+  dates: string[],
+  startIsos: string[],
+): Promise<EvalContext> {
+  const { supabase, businessId, tz } = ctx;
+  const times = startIsos.map((s) => new Date(s).getTime());
+  const minMs = Math.min(...times) - 86_400_000;
+  const maxMs = Math.max(...times) + durationMinutes * 60_000 + 86_400_000;
+  const fromIso = new Date(minMs).toISOString();
+  const toIso = new Date(maxMs).toISOString();
+
+  const [{ data: hourRows }, { data: closureRows }, { data: bookingRows }, { data: staffRows }, { data: offRows }] =
+    await Promise.all([
+      supabase
+        .from("business_hours")
+        .select("day_of_week, is_closed, open_time, close_time")
+        .eq("business_id", businessId),
+      supabase
+        .from("business_closures")
+        .select("date, is_closed, special_open_time, special_close_time")
+        .eq("business_id", businessId)
+        .in("date", dates),
+      supabase
+        .from("bookings")
+        .select("starts_at, ends_at, staff_id")
+        .eq("business_id", businessId)
+        .in("status", ACTIVE)
+        .lt("starts_at", toIso)
+        .gt("ends_at", fromIso),
+      supabase
+        .from("staff")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("is_active", true),
+      supabase
+        .from("staff_time_off")
+        .select("staff_id, starts_at, ends_at")
+        .eq("business_id", businessId)
+        .lt("starts_at", toIso)
+        .gt("ends_at", fromIso),
+    ]);
+
+  const closuresByDate = new Map<string, Closure[]>();
+  for (const c of (closureRows ?? []) as Closure[]) {
+    const list = closuresByDate.get(c.date) ?? [];
+    list.push(c);
+    closuresByDate.set(c.date, list);
+  }
+  const activeIds = new Set((staffRows ?? []).map((s) => s.id));
+  const intervals: Interval[] = (bookingRows ?? []).map((b) => ({
+    s: new Date(b.starts_at).getTime(),
+    e: new Date(b.ends_at).getTime(),
+    staff: b.staff_id,
+  }));
+  const offs = (offRows ?? [])
+    .filter((o) => activeIds.has(o.staff_id))
+    .map((o) => ({
+      s: new Date(o.starts_at).getTime(),
+      e: new Date(o.ends_at).getTime(),
+      staff: o.staff_id as string,
+    }));
+
+  return {
+    hours: (hourRows ?? []) as DayHours[],
+    closuresByDate,
+    intervals,
+    offs,
+    capacity: activeIds.size,
+    durationMs: durationMinutes * 60_000,
+    tz,
+    nowMs: Date.now(),
+  };
+}
+
+export async function previewSeries(input: SeriesRuleInput): Promise<{
+  ok: boolean;
+  error?: string;
+  occurrences?: OccurrencePreview[];
+}> {
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+
+  const svc = await loadService(ctx.supabase, ctx.businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+  if (!/^\d{2}:\d{2}$/.test(input.timeOfDay))
+    return { ok: false, error: "invalid_time" };
+
+  const count = Math.min(Math.max(1, input.count), MAX_OCCURRENCES);
+  const dates = computeOccurrenceDates(
+    {
+      patternType: input.patternType,
+      intervalN: input.intervalN,
+      weekday: input.weekday,
+      nth: input.nth,
+      dayOfMonth: input.dayOfMonth,
+      timeOfDay: input.timeOfDay,
+    },
+    input.startDate,
+    count,
+    ctx.tz,
+  );
+  if (dates.length === 0) return { ok: true, occurrences: [] };
+
+  const startIsos = dates.map((d) =>
+    occurrenceStartIso(d, input.timeOfDay, ctx.tz),
+  );
+  const evalCtx = await loadEvalContext(
+    ctx,
+    svc.duration_minutes,
+    dates,
+    startIsos,
+  );
+
+  const occurrences: OccurrencePreview[] = dates.map((dateStr, i) => {
+    const startIso = startIsos[i];
+    const endIso = new Date(
+      new Date(startIso).getTime() + evalCtx.durationMs,
+    ).toISOString();
+    return {
+      startIso,
+      endIso,
+      dateStr,
+      status: evalOccurrence(dateStr, startIso, input.staffId, evalCtx),
+    };
+  });
+
+  return { ok: true, occurrences };
+}
+
+export async function createSeries(
+  locale: string,
+  input: SeriesRuleInput & { selectedIsos: string[] },
+): Promise<{
+  ok: boolean;
+  error?: string;
+  created?: number;
+  skipped?: number;
+}> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, userId } = ctx;
+
+  const svc = await loadService(supabase, businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+
+  // Staff (if any) must belong to this business.
+  if (input.staffId) {
+    const { data: st } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("id", input.staffId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (!st) return { ok: false, error: "invalid_staff" };
+  }
+
+  // The customer card supplies the name/phone stamped on each booking.
+  const { data: card } = await supabase
+    .from("business_customers")
+    .select("id, first_name, last_name, phone")
+    .eq("id", input.businessCustomerId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!card) return { ok: false, error: "not_found" };
+
+  const selected = [...new Set(input.selectedIsos)].sort();
+  if (selected.length === 0) return { ok: false, error: "no_occurrences" };
+
+  const evalCtx = await loadEvalContext(
+    ctx,
+    svc.duration_minutes,
+    selected.map((iso) => localDate(iso, ctx.tz)), // local dates for closures
+    selected, // start ISOs for the fetch range
+  );
+
+  // Create the series record first.
+  const { data: series, error: seriesErr } = await supabase
+    .from("recurring_series")
+    .insert({
+      business_id: businessId,
+      business_customer_id: card.id,
+      service_id: svc.id,
+      staff_id: input.staffId,
+      no_staff_preference: !input.staffId,
+      service_name: svc.name,
+      price_cents: svc.price_cents,
+      duration_minutes: svc.duration_minutes,
+      pattern_type: input.patternType,
+      interval_n: Math.max(1, input.intervalN),
+      weekday: input.weekday,
+      nth: input.nth,
+      day_of_month: input.dayOfMonth,
+      time_of_day: input.timeOfDay,
+      status: "active",
+    })
+    .select("id")
+    .single();
+  if (seriesErr || !series) return { ok: false, error: "save_failed" };
+
+  const customerName =
+    [card.first_name, card.last_name].filter(Boolean).join(" ").trim() || null;
+
+  let created = 0;
+  let skipped = 0;
+  for (const startIso of selected) {
+    const dateStr = localDate(startIso, ctx.tz);
+    const status = evalOccurrence(dateStr, startIso, input.staffId, evalCtx);
+    if (status !== "ok") {
+      skipped += 1;
+      continue;
+    }
+    const endMs = new Date(startIso).getTime() + evalCtx.durationMs;
+    const endIso = new Date(endMs).toISOString();
+    const { error: insErr } = await supabase.from("bookings").insert({
+      business_id: businessId,
+      customer_id: userId,
+      business_customer_id: card.id,
+      series_id: series.id,
+      service_id: svc.id,
+      staff_id: input.staffId,
+      starts_at: startIso,
+      ends_at: endIso,
+      status: "confirmed",
+      source: "dashboard",
+      no_staff_preference: !input.staffId,
+      customer_name: customerName,
+      customer_phone: card.phone,
+      price_cents: svc.price_cents,
+      service_name: svc.name,
+    });
+    if (insErr) {
+      skipped += 1;
+      continue;
+    }
+    created += 1;
+    // Reflect the new booking so later occurrences in this batch see it.
+    evalCtx.intervals.push({
+      s: new Date(startIso).getTime(),
+      e: endMs,
+      staff: input.staffId,
+    });
+  }
+
+  if (created === 0) {
+    // Nothing booked — drop the empty series.
+    await supabase.from("recurring_series").delete().eq("id", series.id);
+    return { ok: false, error: "no_occurrences" };
+  }
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true, created, skipped };
+}
+
+/** Cancel a single occurrence (one booking) of a series. Owner/manager only. */
+export async function cancelSeriesBooking(
+  locale: string,
+  bookingId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId } = ctx;
+
+  const { data: bk } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("id", bookingId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!bk) return { ok: false, error: "not_found" };
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_by: "business",
+      cancellation_reason: "series_occurrence_cancelled",
+    })
+    .eq("id", bookingId)
+    .eq("business_id", businessId);
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
+}
+
+/** Move a single occurrence to a new start time (a slot ISO). Owner/manager only. */
+export async function rescheduleSeriesBooking(
+  locale: string,
+  bookingId: string,
+  newStartIso: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, tz } = ctx;
+
+  const startMs = new Date(newStartIso).getTime();
+  if (Number.isNaN(startMs)) return { ok: false, error: "invalid_time" };
+  const newDate = localDate(newStartIso, tz);
+
+  const { data: bk } = await supabase
+    .from("bookings")
+    .select("id, starts_at, ends_at, staff_id")
+    .eq("id", bookingId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!bk) return { ok: false, error: "not_found" };
+
+  const durationMs =
+    new Date(bk.ends_at).getTime() - new Date(bk.starts_at).getTime();
+  const endMs = startMs + durationMs;
+  const endIso = new Date(endMs).toISOString();
+
+  // Business hours for the new date.
+  const [{ data: hourRows }, { data: closureRows }] = await Promise.all([
+    supabase
+      .from("business_hours")
+      .select("day_of_week, is_closed, open_time, close_time")
+      .eq("business_id", businessId),
+    supabase
+      .from("business_closures")
+      .select("date, is_closed, special_open_time, special_close_time")
+      .eq("business_id", businessId)
+      .eq("date", newDate),
+  ]);
+  const win = buildDayWindow(
+    newDate,
+    tz,
+    (hourRows ?? []) as DayHours[],
+    (closureRows ?? []) as Closure[],
+    [],
+  );
+  if (
+    !isWithinOpenHours(
+      minutesFromMidnight(newStartIso, tz),
+      minutesFromMidnight(endIso, tz),
+      win,
+    )
+  )
+    return { ok: false, error: "outside_hours" };
+
+  // Conflicts (exclude this booking).
+  const [{ data: overlaps }, { data: staffRows }, { data: offRows }] =
+    await Promise.all([
+      supabase
+        .from("bookings")
+        .select("starts_at, ends_at, staff_id")
+        .eq("business_id", businessId)
+        .in("status", ACTIVE)
+        .neq("id", bookingId)
+        .lt("starts_at", endIso)
+        .gt("ends_at", newStartIso),
+      supabase
+        .from("staff")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("is_active", true),
+      supabase
+        .from("staff_time_off")
+        .select("staff_id, starts_at, ends_at")
+        .eq("business_id", businessId)
+        .lt("starts_at", endIso)
+        .gt("ends_at", newStartIso),
+    ]);
+
+  if (bk.staff_id && (overlaps ?? []).some((b) => b.staff_id === bk.staff_id))
+    return { ok: false, error: "staff_busy" };
+
+  const activeIds = new Set((staffRows ?? []).map((s) => s.id));
+  const intervals: Interval[] = (overlaps ?? []).map((b) => ({
+    s: new Date(b.starts_at).getTime(),
+    e: new Date(b.ends_at).getTime(),
+    staff: b.staff_id,
+  }));
+  const offs = (offRows ?? [])
+    .filter((o) => activeIds.has(o.staff_id))
+    .map((o) => ({
+      s: new Date(o.starts_at).getTime(),
+      e: new Date(o.ends_at).getTime(),
+      staff: o.staff_id as string,
+    }));
+  if (overCapacity(intervals, activeIds.size, offs, startMs, endMs, bk.staff_id))
+    return { ok: false, error: "no_capacity" };
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ starts_at: newStartIso, ends_at: endIso })
+    .eq("id", bookingId)
+    .eq("business_id", businessId);
+  if (error) return { ok: false, error: "save_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
+}
+
+export async function endSeries(
+  locale: string,
+  seriesId: string,
+): Promise<{ ok: boolean; error?: string; cancelled?: number }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId } = ctx;
+
+  const { data: series } = await supabase
+    .from("recurring_series")
+    .select("id")
+    .eq("id", seriesId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!series) return { ok: false, error: "not_found" };
+
+  const nowIso = new Date().toISOString();
+  // Cancel only the future, not-yet-happened bookings of the series.
+  const { data: cancelledRows, error } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_by: "business",
+      cancellation_reason: "series_ended",
+    })
+    .eq("business_id", businessId)
+    .eq("series_id", seriesId)
+    .in("status", ["pending", "confirmed"])
+    .gte("starts_at", nowIso)
+    .select("id");
+  if (error) return { ok: false, error: "save_failed" };
+
+  await supabase
+    .from("recurring_series")
+    .update({ status: "ended" })
+    .eq("id", seriesId)
+    .eq("business_id", businessId);
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true, cancelled: (cancelledRows ?? []).length };
+}
+
+/** Available start times for a NEW booking of a service on a given day. */
+export async function availableNewSlots(input: {
+  serviceId: string;
+  staffId: string | null;
+  date: string; // YYYY-MM-DD (business tz)
+}): Promise<{
+  ok: boolean;
+  error?: string;
+  slots?: { iso: string; label: string }[];
+}> {
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, tz } = ctx;
+
+  const svc = await loadService(supabase, businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+
+  // Capable, active staff for this service.
+  const { data: capable } = await supabase
+    .from("service_staff")
+    .select("staff_id, staff:staff!inner(id, business_id, is_active)")
+    .eq("service_id", input.serviceId);
+  const capableStaffIds = (capable ?? [])
+    .filter((r) => {
+      const s = r.staff as { business_id: string; is_active: boolean } | null;
+      return s?.business_id === businessId && s.is_active;
+    })
+    .map((r) => r.staff_id);
+
+  const [{ data: hours }, { data: closures }, { data: busyRows }] =
+    await Promise.all([
+      supabase
+        .from("business_hours")
+        .select("day_of_week, is_closed, open_time, close_time")
+        .eq("business_id", businessId),
+      supabase
+        .from("business_closures")
+        .select("date, is_closed, special_open_time, special_close_time")
+        .eq("business_id", businessId)
+        .eq("date", input.date),
+      supabase
+        .from("bookings")
+        .select("staff_id, starts_at, ends_at")
+        .eq("business_id", businessId)
+        .in("status", ACTIVE)
+        .gte("starts_at", `${addDaysStr(input.date, -1)}T00:00:00Z`)
+        .lte("starts_at", `${addDaysStr(input.date, 1)}T23:59:59Z`),
+    ]);
+
+  const staffBusy: StaffBusy[] = (busyRows ?? []).map((b) => ({
+    staffId: b.staff_id,
+    startsAt: b.starts_at,
+    endsAt: b.ends_at,
+  }));
+
+  const shRows = capableStaffIds.length
+    ? (
+        await supabase
+          .from("staff_hours")
+          .select("staff_id, day_of_week, open_time, close_time")
+          .in("staff_id", capableStaffIds)
+      ).data ?? []
+    : [];
+  const staffHours: Record<
+    string,
+    Record<number, { open: string; close: string }[]>
+  > = {};
+  const customStaffIds: string[] = [];
+  for (const r of shRows) {
+    if (!staffHours[r.staff_id]) {
+      staffHours[r.staff_id] = {};
+      customStaffIds.push(r.staff_id);
+    }
+    (staffHours[r.staff_id][r.day_of_week] ??= []).push({
+      open: r.open_time,
+      close: r.close_time,
+    });
+  }
+
+  const slots = computeStaffAwareSlots({
+    date: input.date,
+    timeZone: tz,
+    hours: (hours ?? []) as DayHours[],
+    closures: (closures ?? []) as Closure[],
+    durationMinutes: svc.duration_minutes,
+    staffBusy,
+    capableStaffIds,
+    selectedStaffId: input.staffId,
+    staffHours,
+    customStaffIds,
+  });
+
+  return { ok: true, slots: slots.map((s) => ({ iso: s.iso, label: s.label })) };
+}
+
+/** Book a single appointment for a customer card at a chosen slot. */
+export async function bookCustomerAppointment(
+  locale: string,
+  input: {
+    businessCustomerId: string;
+    serviceId: string;
+    staffId: string | null;
+    startIso: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const safeLocale = hasLocale(locale) ? locale : "el";
+  const ctx = await getCtx();
+  if (!ctx) return { ok: false, error: "no_permission" };
+  const { supabase, businessId, userId, tz } = ctx;
+
+  const svc = await loadService(supabase, businessId, input.serviceId);
+  if (!svc) return { ok: false, error: "invalid_service" };
+
+  if (input.staffId) {
+    const { data: st } = await supabase
+      .from("staff")
+      .select("id")
+      .eq("id", input.staffId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (!st) return { ok: false, error: "invalid_staff" };
+  }
+
+  const { data: card } = await supabase
+    .from("business_customers")
+    .select("id, first_name, last_name, phone")
+    .eq("id", input.businessCustomerId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  if (!card) return { ok: false, error: "not_found" };
+
+  const startMs = new Date(input.startIso).getTime();
+  if (Number.isNaN(startMs)) return { ok: false, error: "invalid_time" };
+
+  const dateStr = localDate(input.startIso, tz);
+  const evalCtx = await loadEvalContext(
+    ctx,
+    svc.duration_minutes,
+    [dateStr],
+    [input.startIso],
+  );
+  const status = evalOccurrence(dateStr, input.startIso, input.staffId, evalCtx);
+  if (status === "closed") return { ok: false, error: "outside_hours" };
+  if (status === "busy") return { ok: false, error: "staff_busy" };
+  if (status === "past") return { ok: false, error: "invalid_time" };
+
+  const endIso = new Date(
+    startMs + svc.duration_minutes * 60_000,
+  ).toISOString();
+  const customerName =
+    [card.first_name, card.last_name].filter(Boolean).join(" ").trim() || null;
+
+  const { error } = await supabase.from("bookings").insert({
+    business_id: businessId,
+    customer_id: userId,
+    business_customer_id: card.id,
+    service_id: svc.id,
+    staff_id: input.staffId,
+    starts_at: input.startIso,
+    ends_at: endIso,
+    status: "confirmed",
+    source: "dashboard",
+    no_staff_preference: !input.staffId,
+    customer_name: customerName,
+    customer_phone: card.phone,
+    price_cents: svc.price_cents,
+    service_name: svc.name,
+  });
+  if (error) return { ok: false, error: "create_failed" };
+
+  revalidatePath(`/${safeLocale}/dashboard/customers`);
+  revalidatePath(`/${safeLocale}/dashboard/calendar`);
+  revalidatePath(`/${safeLocale}/dashboard/bookings`);
+  return { ok: true };
+}
+
+function localDate(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
