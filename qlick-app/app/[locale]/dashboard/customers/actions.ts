@@ -113,6 +113,11 @@ export async function listCustomers(search?: string): Promise<{
   if (!businessId) return { ok: false, error: "no_permission" };
 
   await syncRegisteredCustomers(supabase, businessId);
+  // Fill in emails for linked accounts (kept out of the base row for privacy;
+  // the business owns this contact for its own customers).
+  await supabase.rpc("fill_business_customer_emails", {
+    p_business_id: businessId,
+  });
 
   const { data: cardData } = await supabase
     .from("business_customers")
@@ -385,7 +390,13 @@ function cleanInput(input: CustomerInput) {
 export async function createCustomer(
   locale: string,
   input: CustomerInput,
-): Promise<{ ok: boolean; error?: string; id?: string }> {
+): Promise<{
+  ok: boolean;
+  error?: string;
+  id?: string;
+  linked?: boolean;
+  existed?: boolean;
+}> {
   const safeLocale = hasLocale(locale) ? locale : "el";
   const { supabase, businessId } = await getBiz();
   if (!businessId) return { ok: false, error: "no_permission" };
@@ -394,6 +405,59 @@ export async function createCustomer(
   if ("error" in cleaned) return { ok: false, error: cleaned.error };
   if (!cleaned.firstName && !cleaned.lastName && !cleaned.phone)
     return { ok: false, error: "need_name_or_phone" };
+
+  // (3) If the phone/email belongs to a registered customer of this shop, link
+  // the card to that account so their existing appointments show up together.
+  if (cleaned.phone || cleaned.email) {
+    const { data: matchedId } = await supabase.rpc("match_customer_account", {
+      p_business_id: businessId,
+      p_phone: cleaned.phone ?? "",
+      p_email: cleaned.email ?? "",
+    });
+    if (matchedId) {
+      const { data: existingCard } = await supabase
+        .from("business_customers")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("customer_id", matchedId)
+        .maybeSingle();
+      if (existingCard) {
+        revalidatePath(`/${safeLocale}/dashboard/customers`);
+        return { ok: true, id: existingCard.id, linked: true, existed: true };
+      }
+      const { data: linkedCard, error: linkErr } = await supabase
+        .from("business_customers")
+        .insert({
+          business_id: businessId,
+          customer_id: matchedId as string,
+          first_name: cleaned.firstName,
+          last_name: cleaned.lastName,
+          phone: cleaned.phone,
+          email: cleaned.email,
+          notes: cleaned.notes,
+        })
+        .select("id")
+        .single();
+      if (linkErr || !linkedCard) return { ok: false, error: "save_failed" };
+      revalidatePath(`/${safeLocale}/dashboard/customers`);
+      return { ok: true, id: linkedCard.id, linked: true };
+    }
+  }
+
+  // Dedup: a manual card with the same phone already exists → reuse it.
+  if (cleaned.phone) {
+    const { data: dup } = await supabase
+      .from("business_customers")
+      .select("id")
+      .eq("business_id", businessId)
+      .eq("phone", cleaned.phone)
+      .limit(1)
+      .maybeSingle();
+    if (dup) {
+      revalidatePath(`/${safeLocale}/dashboard/customers`);
+      return { ok: true, id: dup.id, existed: true };
+    }
+  }
 
   const { data: created, error } = await supabase
     .from("business_customers")

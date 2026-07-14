@@ -139,17 +139,28 @@ export function CustomersManager({
   const submitForm = () => {
     setFormError(null);
     startTransition(async () => {
-      const res = editingId
-        ? await updateCustomer(locale, editingId, form)
-        : await createCustomer(locale, form);
-      if (!res.ok) {
-        setFormError(dashErr(d.errors, res.error, d.genericError));
-        return;
+      if (editingId) {
+        const res = await updateCustomer(locale, editingId, form);
+        if (!res.ok) {
+          setFormError(dashErr(d.errors, res.error, d.genericError));
+          return;
+        }
+        setShowForm(false);
+        setEditingId(null);
+        refresh(search);
+        if (detailId === editingId) void openDetail(editingId);
+      } else {
+        const res = await createCustomer(locale, form);
+        if (!res.ok) {
+          setFormError(dashErr(d.errors, res.error, d.genericError));
+          return;
+        }
+        setShowForm(false);
+        refresh(search);
+        // Open the card — it may have been linked to / merged with an existing
+        // customer, so the shop immediately sees their synced appointments.
+        if (res.id) void openDetail(res.id);
       }
-      setShowForm(false);
-      setEditingId(null);
-      refresh(search);
-      if (editingId && detailId === editingId) void openDetail(editingId);
     });
   };
 

@@ -1548,6 +1548,14 @@ export type Database = {
         Returns: boolean
       }
       business_plan_state: { Args: { p_business_id: string }; Returns: Json }
+      fill_business_customer_emails: {
+        Args: { p_business_id: string }
+        Returns: undefined
+      }
+      match_customer_account: {
+        Args: { p_business_id: string; p_phone: string; p_email: string }
+        Returns: string
+      }
       cancel_booking: { Args: { p_booking_id: string }; Returns: undefined }
       cancel_business_deletion: {
         Args: { p_business: string }

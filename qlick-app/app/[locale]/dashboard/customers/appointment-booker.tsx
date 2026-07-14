@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useTransition } from "react";
-import { X, CalendarPlus, CheckCircle2 } from "lucide-react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  useTransition,
+} from "react";
+import { X, CalendarPlus, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { SelectMenu } from "@/components/ui/select-menu";
@@ -62,9 +69,23 @@ export function AppointmentBooker({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
   const [bookedCount, setBookedCount] = useState(0);
-  const [justBooked, setJustBooked] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ kind: "ok" | "err"; msg: string } | null>(
+    null,
+  );
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const flash = (kind: "ok" | "err", msg: string, ms: number) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ kind, msg });
+    toastTimer.current = setTimeout(() => setToast(null), ms);
+  };
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
 
   const loadSlots = useCallback((svcId: string, stfId: string, day: string) => {
     startTransition(async () => {
@@ -87,8 +108,6 @@ export function AppointmentBooker({
 
   const book = () => {
     if (!selectedIso) return;
-    setError(null);
-    setJustBooked(false);
     startTransition(async () => {
       const res = await bookCustomerAppointment(locale, {
         businessCustomerId,
@@ -97,18 +116,36 @@ export function AppointmentBooker({
         startIso: selectedIso,
       });
       if (!res.ok) {
-        setError(dashErr(d.errors, res.error, d.genericError));
+        flash("err", dashErr(d.errors, res.error, d.genericError), 3500);
         return;
       }
-      setJustBooked(true);
       setBookedCount((c) => c + 1);
       onBooked();
       loadSlots(serviceId, staffId, date); // drop the just-booked slot
+      flash("ok", tb.bookedOk, 2000);
     });
   };
 
   return (
     <>
+      {toast && (
+        <div
+          className={cn(
+            "fixed left-1/2 top-6 z-[100] flex -translate-x-1/2 items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium shadow-2xl",
+            toast.kind === "ok"
+              ? "border-success/40 bg-success/15 text-success"
+              : "border-danger/40 bg-danger/15 text-danger",
+          )}
+          role="status"
+        >
+          {toast.kind === "ok" ? (
+            <CheckCircle2 className="size-4 shrink-0" />
+          ) : (
+            <AlertCircle className="size-4 shrink-0" />
+          )}
+          {toast.msg}
+        </div>
+      )}
       <div className="fixed inset-0 z-[80] bg-black/50" onClick={onClose} />
       <div className="fixed left-1/2 top-1/2 z-[90] flex max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -181,10 +218,7 @@ export function AppointmentBooker({
                     {slots.map((s) => (
                       <button
                         key={s.iso}
-                        onClick={() => {
-                          setSelectedIso(s.iso);
-                          setJustBooked(false);
-                        }}
+                        onClick={() => setSelectedIso(s.iso)}
                         className={cn(
                           "rounded-lg border px-2 py-1.5 text-xs tabular-nums transition-colors",
                           selectedIso === s.iso
@@ -200,17 +234,6 @@ export function AppointmentBooker({
               </div>
             </div>
 
-            {error && (
-              <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-                {error}
-              </p>
-            )}
-            {justBooked && !error && (
-              <p className="inline-flex items-center gap-1.5 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                <CheckCircle2 className="size-4" />
-                {tb.bookedOk}
-              </p>
-            )}
           </div>
         </div>
 
