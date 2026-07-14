@@ -15,6 +15,7 @@ import {
   CalendarPlus,
   Check,
   Mail,
+  GripVertical,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -706,11 +707,23 @@ export function CustomersManager({
                 setResizing(true);
               }}
               className={cn(
-                "absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-ew-resize transition-colors sm:block",
+                "group absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-ew-resize transition-colors sm:block",
                 resizing ? "bg-gold/40" : "bg-transparent hover:bg-gold/30",
               )}
               aria-hidden
-            />
+            >
+              {/* Visible grip so it's clear the card can be resized */}
+              <span
+                className={cn(
+                  "absolute left-0 top-1/2 flex h-12 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-surface shadow-md transition-colors",
+                  resizing
+                    ? "border-gold/60 text-gold"
+                    : "border-border text-muted group-hover:border-gold/50 group-hover:text-gold",
+                )}
+              >
+                <GripVertical className="size-3.5" />
+              </span>
+            </div>
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <h3 className="font-display text-lg font-bold text-foreground">
                 {detail ? displayName(detail) : t.loading}
