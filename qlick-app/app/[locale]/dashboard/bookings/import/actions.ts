@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale } from "@/i18n/config";
-import { normalizePhone } from "@/lib/validation";
+import { normalizePhone, isValidEmail } from "@/lib/validation";
 import {
   detectColumns,
   parseSheet,
@@ -190,6 +190,7 @@ const PROBLEMS: RowProblem[] = [
   "bad_time",
   "missing_name",
   "bad_phone",
+  "bad_email",
   "unknown_service",
   "unknown_staff",
   "duplicate_in_file",
@@ -222,6 +223,9 @@ function sanitizeRow(
   const startsAtIso = asIso(r.startsAtIso);
   const phoneRaw = asStr(r.phoneRaw, 40);
   const phone = phoneRaw ? normalizePhone(phoneRaw) : null;
+  const emailRaw = asStr(r.emailRaw, 254);
+  const email =
+    emailRaw && isValidEmail(emailRaw) ? emailRaw.toLowerCase() : null;
   const durationMin =
     typeof r.durationMin === "number" &&
     Number.isFinite(r.durationMin) &&
@@ -259,6 +263,8 @@ function sanitizeRow(
     name: asStr(r.name, 120),
     phone,
     phoneRaw,
+    email,
+    emailRaw,
     serviceText: asStr(r.serviceText, 120),
     serviceId,
     staffText: asStr(r.staffText, 120),
@@ -395,40 +401,55 @@ export async function importBookings(
     };
   }
 
-  // ── CRM cards: match by phone, then by name; create the rest ──
+  // ── CRM cards: match by phone → email → name; create the rest ──
   const { data: cards } = await supabase
     .from("business_customers")
-    .select("id, first_name, last_name, phone")
+    .select("id, first_name, last_name, phone, email")
     .eq("business_id", businessId);
 
   const cardByPhone = new Map<string, string>();
+  const cardByEmail = new Map<string, string>();
   const cardByName = new Map<string, string>();
-  for (const c of cards ?? []) {
+  const indexCard = (c: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    phone: string | null;
+    email: string | null;
+  }) => {
     const digits = c.phone?.replace(/\D/g, "");
     if (digits && !cardByPhone.has(digits)) cardByPhone.set(digits, c.id);
+    const mail = c.email?.trim().toLowerCase();
+    if (mail && !cardByEmail.has(mail)) cardByEmail.set(mail, c.id);
     const full = foldText(
       [c.first_name, c.last_name].filter(Boolean).join(" "),
     );
     if (full && !cardByName.has(full)) cardByName.set(full, c.id);
-  }
+  };
+  for (const c of cards ?? []) indexCard(c);
 
   const cardFor = (b: (typeof fresh)[number]): string | null => {
     const digits = b.phone?.replace(/\D/g, "");
     if (digits && cardByPhone.has(digits)) return cardByPhone.get(digits)!;
+    if (b.email && cardByEmail.has(b.email)) return cardByEmail.get(b.email)!;
     const nameKey = foldText(b.name ?? "");
     if (nameKey && cardByName.has(nameKey)) return cardByName.get(nameKey)!;
     return null;
   };
 
-  // Distinct new people in this batch (phone wins as identity, else name).
-  const newPeople = new Map<string, { name: string | null; phone: string | null }>();
+  // Distinct new people in this batch (identity: phone, else email, else name).
+  const newPeople = new Map<
+    string,
+    { name: string | null; phone: string | null; email: string | null }
+  >();
   for (const b of fresh) {
     if (cardFor(b)) continue;
     const digits = b.phone?.replace(/\D/g, "");
     const nameKey = foldText(b.name ?? "");
-    if (!digits && !nameKey) continue; // anonymous row → no card
-    const key = digits ? `p:${digits}` : `n:${nameKey}`;
-    if (!newPeople.has(key)) newPeople.set(key, { name: b.name, phone: b.phone });
+    if (!digits && !b.email && !nameKey) continue; // anonymous row → no card
+    const key = digits ? `p:${digits}` : b.email ? `e:${b.email}` : `n:${nameKey}`;
+    if (!newPeople.has(key))
+      newPeople.set(key, { name: b.name, phone: b.phone, email: b.email });
   }
 
   let customersCreated = 0;
@@ -440,22 +461,16 @@ export async function importBookings(
         first_name: parts[0] ?? null,
         last_name: parts.slice(1).join(" ") || null,
         phone: p.phone,
+        email: p.email,
       };
     });
     const { data: created, error } = await supabase
       .from("business_customers")
       .insert(payload)
-      .select("id, first_name, last_name, phone");
+      .select("id, first_name, last_name, phone, email");
     if (error) return { ok: false, error: "import_failed" };
     customersCreated = created?.length ?? 0;
-    for (const c of created ?? []) {
-      const digits = c.phone?.replace(/\D/g, "");
-      if (digits && !cardByPhone.has(digits)) cardByPhone.set(digits, c.id);
-      const full = foldText(
-        [c.first_name, c.last_name].filter(Boolean).join(" "),
-      );
-      if (full && !cardByName.has(full)) cardByName.set(full, c.id);
-    }
+    for (const c of created ?? []) indexCard(c);
   }
 
   // ── Insert bookings in chunks ──────────────────────────────────

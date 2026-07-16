@@ -10,7 +10,7 @@
  * from the business timezone; customer name/phone are free text (no account).
  */
 
-import { normalizePhone } from "./validation";
+import { normalizePhone, isValidEmail } from "./validation";
 import { zonedTimeToUtc, formatInZone } from "./availability";
 import { localDateInZone } from "./calendar";
 
@@ -24,6 +24,7 @@ export type ImportField =
   | "time"
   | "name"
   | "phone"
+  | "email"
   | "service"
   | "staff"
   | "duration"
@@ -49,10 +50,11 @@ export function foldText(s: string): string {
 
 /** Synonyms are checked in array order; first field whose synonym hits wins. */
 const HEADER_SYNONYMS: [ImportField, string[]][] = [
-  // phone BEFORE name: "τηλεφωνο πελατη" must not match the name synonyms.
-  // date BEFORE time: a combined "Ημερομηνία & Ώρα" column must land on date
-  // (its embedded time is recovered from the datetime cell value).
+  // phone/email BEFORE name: "τηλεφωνο πελατη" / "email πελατη" must not match
+  // the name synonyms. date BEFORE time: a combined "Ημερομηνία & Ώρα" column
+  // must land on date (its embedded time is recovered from the cell value).
   ["phone", ["τηλεφωνο", "τηλ.", "τηλ", "κινητο", "phone", "mobile", "tel"]],
+  ["email", ["email", "e-mail", "mail", "ηλεκτρονικο"]],
   ["date", ["ημερομηνια", "ημ/νια", "date", "ημερα", "day"]],
   ["time", ["ωρα", "time", "εναρξη", "start"]],
   ["name", ["ονοματεπωνυμο", "ονομα", "πελατησ", "customer", "client", "name"]],
@@ -270,6 +272,7 @@ export type RowProblem =
   | "bad_time"
   | "missing_name"
   | "bad_phone"
+  | "bad_email"
   | "unknown_service"
   | "unknown_staff"
   | "duplicate_in_file";
@@ -285,6 +288,9 @@ export interface ParsedRow {
   /** E.164 when valid, else null (raw kept for display) */
   phone: string | null;
   phoneRaw: string | null;
+  /** validated + lowercased when valid, else null (raw kept for display) */
+  email: string | null;
+  emailRaw: string | null;
   serviceText: string | null;
   serviceId: string | null;
   staffText: string | null;
@@ -420,6 +426,13 @@ export function parseSheet(
       if (!phone) problems.push("bad_phone");
     }
 
+    const emailRaw = cellText(pick(cells, "email"));
+    let email: string | null = null;
+    if (emailRaw) {
+      if (isValidEmail(emailRaw)) email = emailRaw.toLowerCase();
+      else problems.push("bad_email");
+    }
+
     const serviceText = cellText(pick(cells, "service"));
     let serviceId: string | null = null;
     if (serviceText) {
@@ -457,6 +470,8 @@ export function parseSheet(
       name,
       phone,
       phoneRaw,
+      email,
+      emailRaw,
       serviceText,
       serviceId,
       staffText,
@@ -496,6 +511,8 @@ export interface FinalBooking {
   staffId: string | null;
   name: string | null;
   phone: string | null;
+  /** goes to the CRM card, not the booking row (bookings carry no email) */
+  email: string | null;
   priceCents: number;
   notes: string | null;
   isPast: boolean;
@@ -555,6 +572,7 @@ export function finalizeRows(
       staffId: staffId ?? null,
       name: row.name,
       phone: row.phone,
+      email: row.email,
       priceCents: row.priceCents ?? svc?.priceCents ?? 0,
       notes: row.notes,
       isPast: startMs < nowMs,

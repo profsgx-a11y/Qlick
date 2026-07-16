@@ -50,6 +50,22 @@ busy blocks GCal→Qlick — θέλει Google verification για calendar scop
 - **`next.config.ts`:** `experimental.serverActions.bodySizeLimit: "6mb"` (upload 4MB + parsed rows).
 - **i18n bilingual-first:** νέο `dashboard.import` (~80 keys + 7 instructions) + 8 error codes σε
   `dashboard.errors`, EL+EN **1621==1621 keys συμμετρικά**. tsc EXIT 0 · eslint EXIT 0 · build OK.
+- **Follow-up (user): +Email +καρτέλα «Ημερολόγιο» στα Excel.** (α) **Στήλη Email** (θέση E) σε πρότυπο/
+  parser (synonyms, isValidEmail→bad_email, lowercase)/εξαγωγή (από τη συνδεδεμένη καρτέλα CRM)/preview·
+  ταυτότητα πελάτη στο import πλέον **τηλέφωνο→email→όνομα** και το email σώζεται στις νέες καρτέλες
+  business_customers. (β) Νέο **`lib/booking-xlsx.ts`** (κοινοί builders για template+export): data sheet
+  (A ημ/νία, B ώρα, C όνομα, D τηλ, E email, F υπηρεσία, G υπάλληλος, H διάρκεια, I τιμή, J σημειώσεις
+  [+K κατάσταση, L πηγή στο export]) + κρυφό Lists/dropdowns (F/G) + **«Ημερολόγιο»: εβδομαδιαία προβολή
+  τύπου Google Calendar με ζωντανούς τύπους Excel** (B1 editable «Εβδομάδα από» με default τρέχουσα
+  Δευτέρα =TODAY()-WEEKDAY(TODAY(),3)· headers ημερών από **numFmt "ddd dd/mm"** — ΟΧΙ TEXT() γιατί τα
+  format-string literals ΔΕΝ μεταφράζονται σε ελληνικό Excel· κελιά ημέρας×ώρας 07:00-22:00 με
+  TEXTJOIN/IF/HOUR/MINUTE πάνω στο data sheet rows 2..10001, «10:30 Όνομα · Υπηρεσία» ανά γραμμή,
+  weekend tint, frozen panes). ΟΧΙ macros (.xlsm = security warnings)· θέλει Excel 2019+/365 ή Google
+  Sheets (σημειώνεται στις Οδηγίες, 9 πλέον). **Το export γράφει typed Date/time cells** (excelDate/
+  excelTime helpers — ώστε να δουλεύουν οι τύποι του ημερολογίου· ο parser τα διαβάζει ήδη). Το data
+  sheet μένει ΠΡΩΤΟ visible (ο parser του upload διαβάζει το πρώτο visible). Tests ενημερώθηκαν — το
+  round-trip χτίζει πλέον το workbook με τους πραγματικούς builders (ελέγχει και formulas/sheet order).
+  i18n +6 keys (hdrEmail/colEmail/problemBadEmail/calendarSheet/calWeekFrom/calHour) + 9/9 instructions.
 - ⚠️ **Οπτική επαλήθευση από τον χρήστη** (θέλει login σε business λογαριασμό — PC + κινητό): κατέβασμα
   προτύπου, ανέβασμα, preview/mapping, εισαγωγή, εμφάνιση σε Ραντεβού/Ημερολόγιο/Πελάτες, εξαγωγή.
 - **Επόμενο (Φάση 2 — GCal):** πίνακας `calendar_connections` (refresh tokens, RLS server-only) + OAuth

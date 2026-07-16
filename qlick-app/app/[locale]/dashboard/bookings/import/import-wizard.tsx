@@ -72,6 +72,7 @@ export function ImportWizard({ locale, services, staff }: Props) {
     bad_time: t.problemBadTime,
     missing_name: t.problemMissingName,
     bad_phone: t.problemBadPhone,
+    bad_email: t.problemBadEmail,
     unknown_service: t.problemUnknownService,
     unknown_staff: t.problemUnknownStaff,
     duplicate_in_file: t.problemDuplicateInFile,
@@ -338,12 +339,13 @@ export function ImportWizard({ locale, services, staff }: Props) {
         {/* Preview table */}
         <div className="animate-rise elev-card overflow-hidden rounded-2xl border border-border bg-surface">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead>
                 <tr className="text-xs uppercase tracking-wide text-muted">
                   <th className="px-4 py-3 font-medium">{t.colWhen}</th>
                   <th className="px-4 py-3 font-medium">{t.colCustomer}</th>
                   <th className="px-4 py-3 font-medium">{t.colPhone}</th>
+                  <th className="px-4 py-3 font-medium">{t.colEmail}</th>
                   <th className="px-4 py-3 font-medium">{t.colService}</th>
                   <th className="px-4 py-3 font-medium">{t.colStaff}</th>
                   <th className="px-4 py-3 font-medium">{t.colIssues}</th>
@@ -380,6 +382,9 @@ export function ImportWizard({ locale, services, staff }: Props) {
                       </td>
                       <td className="whitespace-nowrap px-4 py-2.5 tabular-nums">
                         {r.phone ?? r.phoneRaw ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {r.email ?? r.emailRaw ?? "—"}
                       </td>
                       <td className="px-4 py-2.5">{svcLabel ?? "—"}</td>
                       <td className="px-4 py-2.5">{staffLabel ?? "—"}</td>

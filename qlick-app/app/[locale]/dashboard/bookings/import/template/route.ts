@@ -3,12 +3,18 @@ import type { NextRequest } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
+import {
+  addDataSheet,
+  addCatalogDropdowns,
+  addCalendarSheet,
+  addInstructionsSheet,
+  type BookingXlsxLabels,
+} from "@/lib/booking-xlsx";
 
 /**
  * Downloadable .xlsx import template, personalized per business: the service
- * and staff columns carry dropdowns fed by the business's real catalog (via a
- * hidden "Lists" sheet, so long lists don't hit Excel's 255-char inline cap).
- * Suggestions only — free text stays allowed and is resolved by the wizard.
+ * and staff columns carry dropdowns fed by the business's real catalog, and a
+ * live "Calendar" sheet shows whatever gets typed as a weekly schedule.
  */
 export async function GET(request: NextRequest) {
   const localeSegment = request.nextUrl.pathname.split("/").filter(Boolean)[0];
@@ -42,77 +48,43 @@ export async function GET(request: NextRequest) {
       .eq("is_active", true)
       .order("name"),
   ]);
-  const serviceNames = (services ?? []).map((s) => s.name);
-  const staffNames = (staff ?? []).map((s) => s.name);
 
-  const wb = new ExcelJS.Workbook();
-
-  // ── Sheet 1: the fill-in table ─────────────────────────────────
-  const ws = wb.addWorksheet(t.templateSheet, {
-    views: [{ state: "frozen", ySplit: 1 }],
-  });
-  ws.columns = [
-    { header: t.hdrDate, key: "date", width: 14 },
-    { header: t.hdrTime, key: "time", width: 9 },
-    { header: t.hdrName, key: "name", width: 26 },
-    { header: t.hdrPhone, key: "phone", width: 16 },
-    { header: t.hdrService, key: "service", width: 24 },
-    { header: t.hdrStaff, key: "staff", width: 20 },
-    { header: t.hdrDuration, key: "duration", width: 16 },
-    { header: t.hdrPrice, key: "price", width: 11 },
-    { header: t.hdrNotes, key: "notes", width: 32 },
-  ];
-  const head = ws.getRow(1);
-  head.font = { bold: true };
-  head.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFF3E3BC" },
+  const labels: BookingXlsxLabels = {
+    sheet: t.templateSheet,
+    instructionsSheet: t.instructionsSheet,
+    instructionsTitle: t.instructionsTitle,
+    instructions: t.instructions,
+    calendarSheet: t.calendarSheet,
+    calWeekFrom: t.calWeekFrom,
+    calHour: t.calHour,
+    hdr: {
+      date: t.hdrDate,
+      time: t.hdrTime,
+      name: t.hdrName,
+      phone: t.hdrPhone,
+      email: t.hdrEmail,
+      service: t.hdrService,
+      staff: t.hdrStaff,
+      duration: t.hdrDuration,
+      price: t.hdrPrice,
+      notes: t.hdrNotes,
+      status: t.hdrStatus,
+      source: t.hdrSource,
+    },
   };
-  head.border = { bottom: { style: "medium", color: { argb: "FF8A6D1F" } } };
-  ws.getColumn(1).numFmt = "dd/mm/yyyy";
-  ws.getColumn(2).numFmt = "hh:mm";
-  ws.getColumn(8).numFmt = '#,##0.00 "€"';
 
-  // ── Hidden sheet with the dropdown sources ─────────────────────
-  const lists = wb.addWorksheet("Lists", { state: "hidden" });
-  serviceNames.forEach((n, i) => (lists.getCell(i + 1, 1).value = n));
-  staffNames.forEach((n, i) => (lists.getCell(i + 1, 2).value = n));
-
-  // `dataValidations` exists at runtime but is missing from exceljs's types;
-  // the range form avoids emitting one validation object per cell.
-  const validations = (
-    ws as unknown as {
-      dataValidations: { add(range: string, dv: ExcelJS.DataValidation): void };
-    }
-  ).dataValidations;
-  if (serviceNames.length > 0) {
-    validations.add("E2:E1001", {
-      type: "list",
-      allowBlank: true,
-      showErrorMessage: false,
-      formulae: [`Lists!$A$1:$A$${serviceNames.length}`],
-    });
-  }
-  if (staffNames.length > 0) {
-    validations.add("F2:F1001", {
-      type: "list",
-      allowBlank: true,
-      showErrorMessage: false,
-      formulae: [`Lists!$B$1:$B$${staffNames.length}`],
-    });
-  }
-
-  // ── Sheet 2: instructions ──────────────────────────────────────
-  const info = wb.addWorksheet(t.instructionsSheet);
-  info.getColumn(1).width = 110;
-  info.getCell(1, 1).value = t.instructionsTitle;
-  info.getCell(1, 1).font = { bold: true, size: 14 };
-  t.instructions.forEach((line, i) => {
-    const cell = info.getCell(i + 3, 1);
-    cell.value = `• ${line}`;
-    cell.alignment = { wrapText: true, vertical: "top" };
-  });
+  // Order matters: the data sheet must stay the FIRST visible sheet — that's
+  // the one the upload parser reads when the template comes back.
+  const wb = new ExcelJS.Workbook();
+  const ws = addDataSheet(wb, labels);
+  addCatalogDropdowns(
+    wb,
+    ws,
+    (services ?? []).map((s) => s.name),
+    (staff ?? []).map((s) => s.name),
+  );
+  addCalendarSheet(wb, labels);
+  addInstructionsSheet(wb, labels);
 
   const buf = (await wb.xlsx.writeBuffer()) as unknown as Uint8Array;
   return new NextResponse(new Uint8Array(buf), {
