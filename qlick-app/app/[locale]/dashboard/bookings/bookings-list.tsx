@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   Check,
   X,
@@ -12,7 +13,10 @@ import {
   Trash2,
   Search,
   CalendarDays,
+  Upload,
+  Download,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -46,7 +50,9 @@ interface Props {
 type Tab = "upcoming" | "past" | "cancelled" | "all";
 
 export function BookingsList({ locale, timeZone, initial }: Props) {
-  const d = useDict().dashboard.bookings;
+  const dashDict = useDict().dashboard;
+  const d = dashDict.bookings;
+  const imp = dashDict.import;
   const STATUS_META: Record<string, { label: string; cls: string }> = {
     pending: {
       label: d.statusPending,
@@ -164,7 +170,8 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Tabs (scroll horizontally on narrow screens instead of overflowing) */}
+      {/* Tabs (left) + import/export (right); tabs scroll on narrow screens */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="overflow-x-auto pb-1">
       <div className="inline-flex rounded-full border border-border bg-surface p-0.5 text-sm">
         {tabs.map((t) => {
@@ -193,6 +200,27 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
             </button>
           );
         })}
+      </div>
+      </div>
+
+      {/* Bring appointments in from Excel / take them with you */}
+      <div className="flex shrink-0 items-center gap-2">
+        <Link
+          href={`/${locale}/dashboard/bookings/import`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-gold/50 hover:bg-gold/10 hover:text-gold active:scale-95"
+        >
+          <Upload className="size-3.5" />
+          {imp.importBtn}
+        </Link>
+        {rows.length > 0 && (
+          <a
+            href={`/${locale}/dashboard/bookings/export`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-gold/50 hover:bg-gold/10 hover:text-gold active:scale-95"
+          >
+            <Download className="size-3.5" />
+            {imp.exportBtn}
+          </a>
+        )}
       </div>
       </div>
 
@@ -244,6 +272,16 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
         <EmptyState
           icon={q ? <Search /> : <CalendarDays />}
           message={q ? d.searchNoResults.replace("{q}", q) : d.empty}
+          action={
+            !q && rows.length === 0 ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/${locale}/dashboard/bookings/import`}>
+                  <Upload />
+                  {imp.emptyImportCta}
+                </Link>
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="space-y-3">

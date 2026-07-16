@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
     "10.0.0.*",
     "172.16.0.*",
   ],
+  experimental: {
+    serverActions: {
+      // The appointment-import wizard uploads .xlsx files (capped at 4MB in
+      // the action) and round-trips parsed rows; the default 1MB is too tight.
+      bodySizeLimit: "6mb",
+    },
+  },
 };
 
 export default nextConfig;
