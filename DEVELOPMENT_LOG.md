@@ -6,6 +6,83 @@
 
 ---
 
+## 2026-07-16 — Εισαγωγή ραντεβού από Excel + Εξαγωγή (Onboarding Φάση 1) ✅ DONE
+
+Ο user: «θα βαρεθούν να περάσουν τα ραντεβού τους & δεν θα δοκιμάσουν» → σχέδιο 2 φάσεων (AskUserQuestion):
+**Φάση 1 = Excel import/export (τώρα)** · Φάση 2 = Google Calendar (αρχική φόρτωση + push Qlick→GCal +
+busy blocks GCal→Qlick — θέλει Google verification για calendar scope, ξεκινά νωρίς). Αποφάσεις: πρότυπο +
+έξυπνη ανίχνευση (όχι ελεύθερο mapping UI)· GCal events = κλεισμένες ώρες + προαιρετικό one-time import.
+- **migration `add_import_booking_source`:** `bookings_source_check` +`'import'`. SQL smoke (rollback):
+  insert completed+completed_at+source='import'+card link περνά όλα τα constraints.
+- **`lib/booking-import.ts` (pure core, 0 εξαρτήσεις από HTTP/exceljs):** `foldText` (πεζά/τόνοι/ς→σ),
+  `detectColumns` (συνώνυμα EL/EN, exact→contains, phone πριν το name, **date πριν το time** ώστε το
+  «Ημερομηνία & Ώρα» να πάει στο date), parse ημερομηνιών (Date/Excel serial/DD-MM-YYYY κ.λπ. + 2ψήφιο
+  έτος), ωρών (HH:MM/κλάσμα ημέρας/πμ-μμ), διάρκειας («1:30»→90), τιμής («15,50»/€), `matchByName`
+  (exact→unique prefix→unique substring, αλλιώς null→χειροκίνητο mapping), `parseSheet` (προβλήματα ανά
+  γραμμή: bad_date/bad_time/missing_name/bad_phone/unknown_service/unknown_staff/duplicate_in_file +
+  `whenLabel` server-side), `finalizeRows` (mappings, διάρκεια/τιμή από υπηρεσία, past→isPast, dedupeKey =
+  starts|τηλέφωνο-ψηφία ή folded όνομα). Timezone μέσω υπάρχοντος `zonedTimeToUtc`. **2 test suites**
+  (esbuild bundle + node — το tsx σπάει το libphonenumber JSON require): 46 checks core + **round-trip σε
+  πραγματικό .xlsx** (exceljs write→load→parse: Excel date/time cells→σωστό UTC, «25,50»→2550, E.164,
+  κρυφό Lists sheet αγνοείται). ALL OK.
+- **Template route** `bookings/import/template` (GET, owner/manager): παράγει **προσωποποιημένο** πρότυπο —
+  9 στήλες EL/EN, **dropdowns υπηρεσιών/προσωπικού του καταστήματος** (κρυφό sheet "Lists", όχι inline
+  formula → δεν σκάει το 255-char όριο του Excel· showErrorMessage:false → free text επιτρέπεται), numFmt
+  ημ/ώρας/τιμής, frozen header, sheet «Οδηγίες» (7 bullets). ⚠️ exceljs: `dataValidations` λείπει από τα
+  types (cast) + `writeBuffer()` → `Uint8Array` cast.
+- **Actions (`bookings/import/actions.ts`):** `parseImportFile` (FormData .xlsx ≤4MB → exceljs → normCell
+  richText/formula/hyperlink → **σάρωση 10 πρώτων γραμμών για header** → parseSheet σε ΟΛΟ τον κατάλογο
+  (και ανενεργά — ιστορικά δεδομένα)) · `importBookings` (**πλήρες sanitize** του client payload — ξανά
+  normalizePhone, validate service/staff ids, mappings μόνο σε δικά του ids) → dedupe vs ΟΛΑ τα υπάρχοντα
+  bookings στο εύρος ημερομηνιών (**και cancelled** — ό,τι ακύρωσες δεν ξαναζωντανεύει) + in-batch →
+  **CRM auto-fill:** match καρτών by τηλέφωνο→όνομα, δημιουργία νέων `business_customers`, link
+  `business_customer_id` → insert σε chunks 400: `customer_id=owner` (walk-in pattern), past→
+  `completed`+completed_at, future→`confirmed`, source='import', notes→customer_notes. ΧΩΡΙΣ έλεγχο
+  ωραρίου/capacity (ιστορικά δεδομένα δεν κόβονται), κανένα email. Επιστρέφει
+  imported/duplicates/skipped/customersCreated.
+- **UI:** νέα σελίδα `dashboard/bookings/import` (Topbar + `ImportWizard` client): 2 κάρτες (κατέβασμα
+  προτύπου / **drag&drop upload**) → preview (3 counters, **mapping dropdowns** για άγνωστες υπηρεσίες/
+  άτομα με SelectMenu, default διάρκεια αν χρειάζεται, πίνακας 50 πρώτων γραμμών με chips προβλημάτων,
+  overflow-x για mobile) → done screen (στατιστικά + CTAs ημερολόγιο/πελατολόγιο/νέο αρχείο). Στα
+  **Ραντεβού**: κουμπιά «Εισαγωγή»/«Εξαγωγή Excel» δεξιά από τα tabs + CTA στο EmptyState όταν 0 ραντεβού.
+- **Export route** `bookings/export` (GET): όλα τα ραντεβού σε .xlsx — ίδιες 9 στήλες με το πρότυπο
+  (**round-trip**) + Κατάσταση/Πηγή (localized), ώρες στο business timezone.
+- **`next.config.ts`:** `experimental.serverActions.bodySizeLimit: "6mb"` (upload 4MB + parsed rows).
+- **i18n bilingual-first:** νέο `dashboard.import` (~80 keys + 7 instructions) + 8 error codes σε
+  `dashboard.errors`, EL+EN **1621==1621 keys συμμετρικά**. tsc EXIT 0 · eslint EXIT 0 · build OK.
+- **Follow-up (user): +Email +καρτέλα «Ημερολόγιο» στα Excel.** (α) **Στήλη Email** (θέση E) σε πρότυπο/
+  parser (synonyms, isValidEmail→bad_email, lowercase)/εξαγωγή (από τη συνδεδεμένη καρτέλα CRM)/preview·
+  ταυτότητα πελάτη στο import πλέον **τηλέφωνο→email→όνομα** και το email σώζεται στις νέες καρτέλες
+  business_customers. (β) Νέο **`lib/booking-xlsx.ts`** (κοινοί builders για template+export): data sheet
+  (A ημ/νία, B ώρα, C όνομα, D τηλ, E email, F υπηρεσία, G υπάλληλος, H διάρκεια, I τιμή, J σημειώσεις
+  [+K κατάσταση, L πηγή στο export]) + κρυφό Lists/dropdowns (F/G) + **«Ημερολόγιο»: εβδομαδιαία προβολή
+  τύπου Google Calendar με ζωντανούς τύπους Excel** (B1 editable «Εβδομάδα από» με default τρέχουσα
+  Δευτέρα =TODAY()-WEEKDAY(TODAY(),3)· headers ημερών από **numFmt "ddd dd/mm"** — ΟΧΙ TEXT() γιατί τα
+  format-string literals ΔΕΝ μεταφράζονται σε ελληνικό Excel· κελιά ημέρας×ώρας 07:00-22:00 με
+  TEXTJOIN/IF/HOUR/MINUTE πάνω στο data sheet rows 2..10001, «10:30 Όνομα · Υπηρεσία» ανά γραμμή,
+  weekend tint, frozen panes). ΟΧΙ macros (.xlsm = security warnings)· θέλει Excel 2019+/365 ή Google
+  Sheets (σημειώνεται στις Οδηγίες, 9 πλέον). **Το export γράφει typed Date/time cells** (excelDate/
+  excelTime helpers — ώστε να δουλεύουν οι τύποι του ημερολογίου· ο parser τα διαβάζει ήδη). Το data
+  sheet μένει ΠΡΩΤΟ visible (ο parser του upload διαβάζει το πρώτο visible). Tests ενημερώθηκαν — το
+  round-trip χτίζει πλέον το workbook με τους πραγματικούς builders (ελέγχει και formulas/sheet order).
+  i18n +6 keys (hdrEmail/colEmail/problemBadEmail/calendarSheet/calWeekFrom/calHour) + 9/9 instructions.
+- **Fix #NAME? στο «Ημερολόγιο»** (ο χρήστης το άνοιξε σε Excel web — 112 κελιά incompatible): το xlsx
+  format απαιτεί (α) οι post-2007 συναρτήσεις να αποθηκεύονται με πρόθεμα **`_xlfn.`** (π.χ.
+  `_xlfn.TEXTJOIN` — το Excel το αποδίδει ως TEXTJOIN) και (β) οι τύποι πίνακα να σημαίνονται
+  **`t="array"`** αλλιώς το Excel εισάγει implicit-intersection `@` και σπάει το row-matching. exceljs:
+  `cell.value = { formula, shareType: "array", ref }` (runtime OK, λείπει από typings → cast). Το test
+  ελέγχει πλέον και το **raw sheet XML** (jszip): `t="array"` + `_xlfn.TEXTJOIN` — ακριβώς ό,τι γράφει
+  το πραγματικό Excel. +Στήλη A 12 πλάτος/label 9pt (κοβόταν το «Εβδομάδα από:»).
+- ⚠️ **Οπτική επαλήθευση από τον χρήστη** (θέλει login σε business λογαριασμό — PC + κινητό): κατέβασμα
+  προτύπου, ανέβασμα, preview/mapping, εισαγωγή, εμφάνιση σε Ραντεβού/Ημερολόγιο/Πελάτες, εξαγωγή.
+- **Επόμενο (Φάση 2 — GCal):** πίνακας `calendar_connections` (refresh tokens, RLS server-only) + OAuth
+  connect/callback routes + push σε create/cancel/reschedule (`bookings.gcal_event_id`, extendedProperty
+  για anti-loop) + Vercel cron busy-sync (`external_busy_events` → availability + RPC guard) + one-time
+  import με preview. **Ξεκίνα την αίτηση Google verification νωρίς** (sensitive scope: domain, privacy
+  policy ✓, demo video· test mode ≤100 users μέχρι τότε).
+
+---
+
 ## 2026-06-25 — Hero landing: benefit card «Γιατί QR στην πόρτα;» (γεμίζει το κενό full-bleed) ✅ DONE
 
 Follow-up του full-bleed: ο χρήστης είδε το hero «αραιό» στη μέση (text αριστερά / poster δεξιά) σε φαρδιά
