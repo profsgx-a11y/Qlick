@@ -66,6 +66,13 @@ busy blocks GCal→Qlick — θέλει Google verification για calendar scop
   sheet μένει ΠΡΩΤΟ visible (ο parser του upload διαβάζει το πρώτο visible). Tests ενημερώθηκαν — το
   round-trip χτίζει πλέον το workbook με τους πραγματικούς builders (ελέγχει και formulas/sheet order).
   i18n +6 keys (hdrEmail/colEmail/problemBadEmail/calendarSheet/calWeekFrom/calHour) + 9/9 instructions.
+- **Fix #NAME? στο «Ημερολόγιο»** (ο χρήστης το άνοιξε σε Excel web — 112 κελιά incompatible): το xlsx
+  format απαιτεί (α) οι post-2007 συναρτήσεις να αποθηκεύονται με πρόθεμα **`_xlfn.`** (π.χ.
+  `_xlfn.TEXTJOIN` — το Excel το αποδίδει ως TEXTJOIN) και (β) οι τύποι πίνακα να σημαίνονται
+  **`t="array"`** αλλιώς το Excel εισάγει implicit-intersection `@` και σπάει το row-matching. exceljs:
+  `cell.value = { formula, shareType: "array", ref }` (runtime OK, λείπει από typings → cast). Το test
+  ελέγχει πλέον και το **raw sheet XML** (jszip): `t="array"` + `_xlfn.TEXTJOIN` — ακριβώς ό,τι γράφει
+  το πραγματικό Excel. +Στήλη A 12 πλάτος/label 9pt (κοβόταν το «Εβδομάδα από:»).
 - ⚠️ **Οπτική επαλήθευση από τον χρήστη** (θέλει login σε business λογαριασμό — PC + κινητό): κατέβασμα
   προτύπου, ανέβασμα, preview/mapping, εισαγωγή, εμφάνιση σε Ραντεβού/Ημερολόγιο/Πελάτες, εξαγωγή.
 - **Επόμενο (Φάση 2 — GCal):** πίνακας `calendar_connections` (refresh tokens, RLS server-only) + OAuth

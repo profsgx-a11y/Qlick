@@ -162,13 +162,13 @@ export function addCalendarSheet(
   const names = `${S}!$C$2:$C$${DATA_LAST_ROW}`;
   const services = `${S}!$F$2:$F$${DATA_LAST_ROW}`;
 
-  ws.getColumn(1).width = 9;
+  ws.getColumn(1).width = 12;
   for (let c = 2; c <= 8; c++) ws.getColumn(c).width = 26;
 
   // Row 1: editable week-start (defaults to this week's Monday).
   const label = ws.getCell(1, 1);
   label.value = labels.calWeekFrom;
-  label.font = { bold: true };
+  label.font = { bold: true, size: 9 };
   const weekStart = ws.getCell(1, 2);
   weekStart.value = { formula: "TODAY()-WEEKDAY(TODAY(),3)" };
   weekStart.numFmt = "dd/mm/yyyy";
@@ -211,13 +211,20 @@ export function addCalendarSheet(
     for (let d = 0; d < 7; d++) {
       const cell = ws.getCell(r, d + 2);
       const day = `${dayLetters[d]}$2`;
-      // Locale-proof "HH:MM Name · Service" per matching row.
+      // Locale-proof "HH:MM Name · Service" per matching row. Two file-format
+      // requirements, or Excel shows #NAME?: post-2007 functions must be
+      // stored with the `_xlfn.` prefix (Excel renders it away), and the
+      // formula must be marked as an ARRAY formula (t="array") — otherwise
+      // Excel loads it with implicit-intersection `@`s and the row-matching
+      // breaks. `shareType`/`ref` exist at runtime but not in the typings.
       cell.value = {
         formula:
-          `TEXTJOIN(CHAR(10),TRUE,IF((${dates}=${day})*(HOUR(${times})=HOUR($A${r})),` +
+          `_xlfn.TEXTJOIN(CHAR(10),TRUE,IF((${dates}=${day})*(HOUR(${times})=HOUR($A${r})),` +
           `HOUR(${times})&":"&RIGHT("0"&MINUTE(${times}),2)&" "&${names}` +
-          `&IF(${services}="","","  · "&${services}),""))`,
-      };
+          `&IF(${services}="",""," · "&${services}),""))`,
+        shareType: "array",
+        ref: `${dayLetters[d]}${r}`,
+      } as unknown as ExcelJS.CellFormulaValue;
       cell.font = { size: 9 };
       cell.alignment = { vertical: "top", wrapText: true };
       cell.border = { top: grid, right: grid };
