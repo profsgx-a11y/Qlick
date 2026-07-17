@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale } from "@/i18n/config";
 import { isMobilePhone, normalizePhone, isValidPassword } from "@/lib/validation";
+import { queueGcalSync } from "@/lib/google/sync";
 
 export interface SimpleResult {
   ok: boolean;
@@ -26,6 +27,7 @@ export async function cancelBooking(
       return { ok: false, error: "cannot_cancel" };
     return { ok: false, error: "cancel_failed" };
   }
+  queueGcalSync([bookingId]);
   revalidatePath(`/${safeLocale}/account`);
   return { ok: true };
 }
@@ -56,6 +58,7 @@ export async function rescheduleBooking(
       return { ok: false, error: "service_unavailable" };
     return { ok: false, error: "reschedule_failed" };
   }
+  queueGcalSync([bookingId]);
   revalidatePath(`/${safeLocale}/account`);
   return { ok: true };
 }

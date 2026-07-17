@@ -9,6 +9,7 @@ import {
   minutesFromMidnight,
 } from "@/lib/calendar";
 import { normalizePhone } from "@/lib/validation";
+import { queueGcalSync } from "@/lib/google/sync";
 import {
   computeStaffAwareSlots,
   type DayHours,
@@ -275,6 +276,7 @@ export async function createWalkin(
   if (error || !created)
     return { ok: false, error: "create_failed" };
 
+  queueGcalSync([created.id]);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   revalidatePath(`/${safeLocale}/dashboard`);
@@ -458,6 +460,7 @@ export async function moveBooking(
     .eq("id", input.bookingId);
   if (error) return { ok: false, error: "move_failed" };
 
+  queueGcalSync([input.bookingId]);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   return { ok: true, endsAtIso };
@@ -586,6 +589,7 @@ export async function resizeBooking(
     .eq("id", input.bookingId);
   if (error) return { ok: false, error: "resize_failed" };
 
+  queueGcalSync([input.bookingId]);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   return { ok: true };

@@ -6,6 +6,69 @@
 
 ---
 
+## 2026-07-17 — Google Calendar sync (Φάση 2): connect/push/busy/import — ΚΩΔΙΚΑΣ ΕΤΟΙΜΟΣ ⏳ creds+δοκιμή
+
+Αποφάσεις (AskUserQuestion): σύνδεση **ανά μέλος προσωπικού** (πολλές συνδέσεις/κατάστημα· χωρίς
+προσωπικό → όλο το μαγαζί)· push **όλα τα μελλοντικά** (και walk-in/recurring/Excel-import)· ακύρωση →
+**διαγραφή** event· busy sync **ΜΟΝΟ χειροκίνητα** (κουμπί «Συγχρονισμός τώρα», κανένα background polling).
+- **DB (migrations LIVE):** `calendar_connections` (tokens ΚΡΥΠΤΟΓΡΑΦΗΜΕΝΑ, RLS χωρίς policies =
+  server-only· unique biz+email και biz+staff), `external_busy_events` (**μόνο ώρες, όχι τίτλοι** —
+  Limited Use minimization· SELECT policy για members), `bookings.gcal_event_id/gcal_connection_id/
+  gcal_synced_at`, source +`'gcal'`. `get_staff_busy_intervals` +3 UNION κλάδοι (per-staff events·
+  business-wide → expand σε κάθε bookable staff· null-staff → single-slot guard) και νέο
+  `staff_external_busy()` σε ΟΛΑ τα guard σημεία των `create_booking`/`reschedule_booking` → τα GCal
+  busy μπλοκάρουν online κρατήσεις παντού (slots + RPC race-guard). SQL smoke με DO block+rollback ✓.
+- **lib/google/**: `crypto.ts` AES-256-GCM base64(iv|tag|ct), κλειδί `GCAL_TOKEN_KEY`· `calendar.ts`
+  σκέτο fetch (ΟΧΙ googleapis dep) — auth URL (prompt=consent, access_type=offline), exchange/refresh/
+  revoke, calendarList, events CRUD, paginated window list· `mapping.ts` (pure/testable):
+  `pickConnectionForBooking` (staff match → business-wide → μοναδική σύνδεση για unassigned/solo),
+  `bookingEventBody` (label-free description + `extendedProperties.private.qlickBookingId` anti-loop),
+  `busyIntervalsFromEvents` (σκιπ transparent «Free»/cancelled/qlick-created/adopted· all-day → business
+  tz μεσάνυχτα), `importableEventsFrom`· `sync.ts` orchestration (admin client): access-token cache +
+  refresh (invalid_grant → `sync_error='reconnect_required'` → κουμπί «Επανασύνδεση»),
+  `syncBookingsToGoogle` (create/patch/delete, μετακίνηση μεταξύ ημερολογίων σε αλλαγή staff, 404 →
+  recreate), `pushAllFutureBookings` (initial fill + self-heal + καθάρισμα cancelled-με-event),
+  `syncBusyForBusiness` (full-window replace [now, +90d], cap 2000), `applyConnectionSettings`
+  (remap → σβήνει μελλοντικά events από παλιό ημερολόγιο + repush + auto busy-sync όταν ανάβει το
+  toggle), import helpers, `removeConnection` (revoke + delete· τα gcal_event_id μένουν → reconnect
+  ίδιου λογαριασμού τα ξανα-υιοθετεί).
+- **`lib/supabase/admin.ts`** (πρώτο service-role client στο project — `SUPABASE_SECRET_KEY`).
+- **OAuth routes** `app/api/google-calendar/{start,callback}`: state nonce σε httpOnly cookie 10',
+  owner/manager έλεγχος και στα 2 άκρα, **granular-consent check** (ο χρήστης μπορεί να ξετσεκάρει
+  scope → err_scope), email από id_token, reconnect = update tokens χωρίς να χαθεί mapping, redirect
+  `settings?gcal=<flag>#google-calendar`.
+- **Push hooks — `queueGcalSync()` = next/server `after()` fire-and-forget** σε ΟΛΑ τα mutation sites:
+  submitBooking, account cancel/reschedule, updateBookingStatus, calendar create/move/resize, reports
+  blockCustomer bulk-cancel (+`.select("id")`), recurring create/cancel/reschedule/endSeries, Excel
+  import (μόνο future confirmed). Μηδενικό κόστος όταν δεν υπάρχει σύνδεση (early-exit).
+- **Settings → κάρτα Google Calendar:** connect/επανασύνδεση (`<a>` full-nav — eslint-disable με
+  σχόλιο), ανά σύνδεση: live επιλογή ημερολογίου από Google, «Ανήκει σε» (υποχρεωτικό όταν υπάρχει
+  bookable staff· «Όλο το κατάστημα» μόνο χωρίς προσωπικό), switches push/busy (off → σβήνει mirrored
+  rows· on → τρέχει sync αμέσως), «Ανέβασμα μελλοντικών ραντεβού», «Συγχρονισμός τώρα», αποσύνδεση με
+  inline confirm, banners από `?gcal=` flag, «Τελευταίος συγχρονισμός: …».
+- **One-time import** `dashboard/bookings/google-import`: preview (πότε/τίτλος/διάρκεια, checkboxes,
+  default υπηρεσία υποχρεωτική) → insert `source='gcal'` confirmed με **gcal_event_id = source event id**
+  (υιοθεσία: μελλοντικά edits ΠΑΤΣΑΡΟΥΝ το υπάρχον event, όχι διπλό) + `markEventsAdopted` γράφει το
+  qlick extendedProperty στο Google· dedupe by event id· το busy sync εξαιρεί adopted events.
+- **Dashboard ημερολόγιο:** Google busy blocks = tints τύπου time-off («Google · Απασχολημένος»)·
+  business-wide σε όλες τις στήλες. **Walk-ins επιτρέπονται πάνω σε GCal busy** (συνειδητό owner
+  override)· online πελάτες μπλοκάρονται.
+- **Privacy policy** EL+EN: νέα ενότητα Google Calendar με Limited Use disclosure (verification req).
+- **i18n bilingual-first:** `dashboard.gcal` 69 keys + 7 codes σε `dashboard.errors`, **1704==1704
+  συμμετρικά** (surgical text insert — καθαρό diff, όχι restringify). DB types regenerated.
+- **Tests (esbuild bundle + node, όπως Φάση 1): 25 checks ALL OK** — crypto roundtrip/tamper, pick
+  rules, event body, busy filtering + all-day EEST μετατροπή (21:00Z), import filtering. tsc EXIT 0 ·
+  νέα/πειραγμένα αρχεία eslint clean (το baseline `npm run lint` έχει ~25 προϋπάρχοντα errors από
+  νέους react-hooks κανόνες, άσχετα αρχεία) · build EXIT 0.
+- **Env:** `.env.local` +4 (GOOGLE_CLIENT_ID/SECRET=PASTE_ME, GCAL_TOKEN_KEY=generated,
+  SUPABASE_SECRET_KEY=PASTE_ME)· τα ίδια 4 και στο Vercel. **Οδηγός Google Cloud** (Μέρος 1 setup ~30' +
+  Μέρος 2 verification: video script + έτοιμο scope justification EN) δόθηκε ως artifact.
+- ⚠️ **Εκκρεμεί:** (1) Google Cloud setup από τον χρήστη + env τιμές, (2) live δοκιμή σε localhost με
+  test user (connect → push → busy → import), (3) οπτική επαλήθευση PC+κινητό, (4) deploy + video +
+  υποβολή verification. Σε Testing mode τα refresh tokens λήγουν κάθε 7 μέρες (επανασύνδεση).
+
+---
+
 ## 2026-07-16 — Εισαγωγή ραντεβού από Excel + Εξαγωγή (Onboarding Φάση 1) ✅ DONE
 
 Ο user: «θα βαρεθούν να περάσουν τα ραντεβού τους & δεν θα δοκιμάσουν» → σχέδιο 2 φάσεων (AskUserQuestion):
