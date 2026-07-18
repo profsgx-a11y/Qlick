@@ -412,7 +412,7 @@
     ],
     "showcase": {
       "title": "Your shop, ready to take bookings",
-      "subtitle": "Every business gets its own booking page. Customers pick a service and a time in three steps.",
+      "subtitle": "Every business gets its own page. Bookings are completed in three steps.",
       "phone": {
         "shopName": "Barber House",
         "shopMeta": "Barbershop · Athens",
@@ -427,9 +427,9 @@
         "bookedSub": "Saturday 10:30 · Haircut"
       },
       "points": [
-        { "title": "No app needed", "body": "Opens in the phone's browser. Customers download nothing." },
-        { "title": "Always up to date", "body": "Shows only times that are truly free, with no double bookings." },
-        { "title": "In your colors", "body": "With your logo, your hours and your services." }
+        { "title": "No app download", "body": "Opens in the phone's browser." },
+        { "title": "Only available times", "body": "No double bookings." },
+        { "title": "Personalized poster", "body": "With each business's logo, hours and services." }
       ]
     },
     "retention": {
