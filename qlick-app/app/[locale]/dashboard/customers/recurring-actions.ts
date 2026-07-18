@@ -9,6 +9,7 @@ import {
   minutesFromMidnight,
   addDaysStr,
 } from "@/lib/calendar";
+import { queueGcalSync } from "@/lib/google/sync";
 import {
   computeStaffAwareSlots,
   type DayHours,
@@ -378,6 +379,7 @@ export async function createSeries(
 
   let created = 0;
   let skipped = 0;
+  const createdIds: string[] = [];
   for (const startIso of selected) {
     const dateStr = localDate(startIso, ctx.tz);
     const status = evalOccurrence(dateStr, startIso, input.staffId, evalCtx);
@@ -387,28 +389,33 @@ export async function createSeries(
     }
     const endMs = new Date(startIso).getTime() + evalCtx.durationMs;
     const endIso = new Date(endMs).toISOString();
-    const { error: insErr } = await supabase.from("bookings").insert({
-      business_id: businessId,
-      customer_id: userId,
-      business_customer_id: card.id,
-      series_id: series.id,
-      service_id: svc.id,
-      staff_id: input.staffId,
-      starts_at: startIso,
-      ends_at: endIso,
-      status: "confirmed",
-      source: "dashboard",
-      no_staff_preference: !input.staffId,
-      customer_name: customerName,
-      customer_phone: card.phone,
-      price_cents: svc.price_cents,
-      service_name: svc.name,
-    });
-    if (insErr) {
+    const { data: ins, error: insErr } = await supabase
+      .from("bookings")
+      .insert({
+        business_id: businessId,
+        customer_id: userId,
+        business_customer_id: card.id,
+        series_id: series.id,
+        service_id: svc.id,
+        staff_id: input.staffId,
+        starts_at: startIso,
+        ends_at: endIso,
+        status: "confirmed",
+        source: "dashboard",
+        no_staff_preference: !input.staffId,
+        customer_name: customerName,
+        customer_phone: card.phone,
+        price_cents: svc.price_cents,
+        service_name: svc.name,
+      })
+      .select("id")
+      .single();
+    if (insErr || !ins) {
       skipped += 1;
       continue;
     }
     created += 1;
+    createdIds.push(ins.id);
     // Reflect the new booking so later occurrences in this batch see it.
     evalCtx.intervals.push({
       s: new Date(startIso).getTime(),
@@ -423,6 +430,7 @@ export async function createSeries(
     return { ok: false, error: "no_occurrences" };
   }
 
+  queueGcalSync(createdIds);
   revalidatePath(`/${safeLocale}/dashboard/customers`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
@@ -458,6 +466,7 @@ export async function cancelSeriesBooking(
     .eq("business_id", businessId);
   if (error) return { ok: false, error: "save_failed" };
 
+  queueGcalSync([bookingId]);
   revalidatePath(`/${safeLocale}/dashboard/customers`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
@@ -570,6 +579,7 @@ export async function rescheduleSeriesBooking(
     .eq("business_id", businessId);
   if (error) return { ok: false, error: "save_failed" };
 
+  queueGcalSync([bookingId]);
   revalidatePath(`/${safeLocale}/dashboard/customers`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
@@ -615,6 +625,7 @@ export async function endSeries(
     .eq("id", seriesId)
     .eq("business_id", businessId);
 
+  queueGcalSync((cancelledRows ?? []).map((r) => r.id));
   revalidatePath(`/${safeLocale}/dashboard/customers`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
@@ -773,24 +784,29 @@ export async function bookCustomerAppointment(
   const customerName =
     [card.first_name, card.last_name].filter(Boolean).join(" ").trim() || null;
 
-  const { error } = await supabase.from("bookings").insert({
-    business_id: businessId,
-    customer_id: userId,
-    business_customer_id: card.id,
-    service_id: svc.id,
-    staff_id: input.staffId,
-    starts_at: input.startIso,
-    ends_at: endIso,
-    status: "confirmed",
-    source: "dashboard",
-    no_staff_preference: !input.staffId,
-    customer_name: customerName,
-    customer_phone: card.phone,
-    price_cents: svc.price_cents,
-    service_name: svc.name,
-  });
-  if (error) return { ok: false, error: "create_failed" };
+  const { data: ins, error } = await supabase
+    .from("bookings")
+    .insert({
+      business_id: businessId,
+      customer_id: userId,
+      business_customer_id: card.id,
+      service_id: svc.id,
+      staff_id: input.staffId,
+      starts_at: input.startIso,
+      ends_at: endIso,
+      status: "confirmed",
+      source: "dashboard",
+      no_staff_preference: !input.staffId,
+      customer_name: customerName,
+      customer_phone: card.phone,
+      price_cents: svc.price_cents,
+      service_name: svc.name,
+    })
+    .select("id")
+    .single();
+  if (error || !ins) return { ok: false, error: "create_failed" };
 
+  queueGcalSync([ins.id]);
   revalidatePath(`/${safeLocale}/dashboard/customers`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);

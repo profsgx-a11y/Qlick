@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale } from "@/i18n/config";
+import { queueGcalSync } from "@/lib/google/sync";
 
 export interface ActionResult {
   ok: boolean;
@@ -68,13 +69,15 @@ export async function blockCustomer(
   if (error) return { ok: false, error: "block_failed" };
 
   if (cancelFuture) {
-    await supabase
+    const { data: cancelled } = await supabase
       .from("bookings")
       .update({ status: "cancelled", cancelled_by: "business" })
       .eq("business_id", businessId)
       .eq("customer_id", customerId)
       .in("status", ["pending", "confirmed"])
-      .gt("starts_at", new Date().toISOString());
+      .gt("starts_at", new Date().toISOString())
+      .select("id");
+    queueGcalSync((cancelled ?? []).map((r) => r.id));
   }
 
   revalidatePath(`/${safeLocale}/dashboard/reports`);

@@ -35,6 +35,14 @@ export default async function PrivacyPage({
           ],
         },
         {
+          heading: "Google Calendar (προαιρετική σύνδεση για επαγγελματίες)",
+          body: [
+            "Αν συνδέσεις το Google Calendar σου, το Qlick: (α) δημιουργεί/ενημερώνει/διαγράφει στο ημερολόγιό σου ένα event για κάθε ραντεβού του Qlick, (β) εφόσον το ενεργοποιήσεις, διαβάζει ποιες ώρες είσαι απασχολημένος ώστε να μην δέχεσαι online κρατήσεις εκείνες τις ώρες, και (γ) σου επιτρέπει μια εφάπαξ εισαγωγή των προσεχών ραντεβού σου από το Google στο Qlick.",
+            "Αποθηκεύουμε μόνο: κρυπτογραφημένα διακριτικά πρόσβασης (tokens), το αναγνωριστικό του ημερολογίου που επέλεξες και τις ώρες έναρξης/λήξης των απασχολημένων διαστημάτων — όχι τίτλους, περιγραφές, τοποθεσίες ή συμμετέχοντες. Μπορείς να αποσυνδέσεις το ημερολόγιο ανά πάσα στιγμή από τις Ρυθμίσεις· τότε διαγράφουμε τα tokens και τα αποθηκευμένα διαστήματα.",
+            "Η χρήση δεδομένων που λαμβάνονται από Google APIs συμμορφώνεται με την Πολιτική Δεδομένων Χρήστη των Υπηρεσιών Google API (Google API Services User Data Policy), συμπεριλαμβανομένων των απαιτήσεων Περιορισμένης Χρήσης (Limited Use). Δεν πωλούνται, δεν χρησιμοποιούνται για διαφημίσεις και δεν χρησιμοποιούνται για εκπαίδευση μοντέλων.",
+          ],
+        },
+        {
           heading: "Τα δικαιώματά σου (GDPR)",
           body: [
             "Έχεις δικαίωμα πρόσβασης, διόρθωσης, διαγραφής και φορητότητας των δεδομένων σου, καθώς και δικαίωμα εναντίωσης στην επεξεργασία.",
@@ -74,6 +82,14 @@ export default async function PrivacyPage({
           heading: "Where it is stored",
           body: [
             "Data is hosted on servers within the European Union (Frankfurt, Germany) through our infrastructure provider.",
+          ],
+        },
+        {
+          heading: "Google Calendar (optional connection for businesses)",
+          body: [
+            "If you connect your Google Calendar, Qlick: (a) creates/updates/deletes an event in your calendar for every Qlick appointment, (b) if you enable it, reads which hours you are busy so online bookings are blocked for those hours, and (c) lets you run a one-time import of your upcoming appointments from Google into Qlick.",
+            "We store only: encrypted access tokens, the ID of the calendar you chose, and the start/end times of busy intervals — no titles, descriptions, locations or attendees. You can disconnect the calendar at any time from Settings; we then delete the tokens and the stored intervals.",
+            "Qlick's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements. Google user data is never sold, never used for advertising, and never used to train models.",
           ],
         },
         {

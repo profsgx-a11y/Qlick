@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { queueGcalSync } from "@/lib/google/sync";
 import {
   computeStaffAwareSlots,
   type DayHours,
@@ -263,5 +264,6 @@ export async function submitBooking(params: {
       .is("phone", null);
   }
 
+  queueGcalSync([data as string]);
   return { ok: true, bookingId: data as string };
 }

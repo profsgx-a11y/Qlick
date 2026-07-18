@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale } from "@/i18n/config";
 import { normalizePhone, isValidEmail } from "@/lib/validation";
+import { queueGcalSync } from "@/lib/google/sync";
 import {
   detectColumns,
   parseSheet,
@@ -494,9 +495,13 @@ export async function importBookings(
   }));
 
   let imported = 0;
+  const futureIds: string[] = [];
   for (let i = 0; i < payload.length; i += 400) {
     const chunk = payload.slice(i, i + 400);
-    const { error } = await supabase.from("bookings").insert(chunk);
+    const { data: inserted, error } = await supabase
+      .from("bookings")
+      .insert(chunk)
+      .select("id, status");
     if (error) {
       // Report what actually landed before the failure.
       return imported > 0
@@ -504,7 +509,13 @@ export async function importBookings(
         : { ok: false, error: "import_failed" };
     }
     imported += chunk.length;
+    for (const r of inserted ?? []) {
+      if (r.status === "confirmed") futureIds.push(r.id);
+    }
   }
+
+  // Mirror the newly imported FUTURE appointments to Google (if connected).
+  queueGcalSync(futureIds);
 
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);

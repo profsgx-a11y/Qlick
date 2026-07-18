@@ -4,18 +4,26 @@ import { Topbar } from "@/components/dashboard/topbar";
 import { Button } from "@/components/ui/button";
 import { requireBusiness } from "@/lib/dashboard";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getPlanState } from "@/lib/subscription";
+import { gcalConfigured } from "@/lib/google/calendar";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { HoursEditor } from "./hours-editor";
 import { BusinessInfoEditor } from "./business-info-editor";
 import { CategoryEditor, type CategoryGroup } from "./category-editor";
 import { DeleteShop } from "./delete-shop";
+import {
+  GoogleCalendarSection,
+  type GcalConnectionView,
+} from "./google-calendar-section";
 import type { DayHoursInput } from "./actions";
 
 export default async function SettingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ gcal?: string }>;
 }) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
@@ -101,6 +109,48 @@ export default async function SettingsPage({
     };
   });
 
+  // Google Calendar connections — tokens are server-only (no RLS policies),
+  // so the safe fields are read here with the admin client and only those
+  // reach the client component.
+  const gcalReady = gcalConfigured();
+  let gcalConnections: GcalConnectionView[] = [];
+  let staffOptions: { id: string; name: string }[] = [];
+  if (gcalReady) {
+    try {
+      const admin = createAdminClient();
+      const [{ data: connRows }, { data: staffRows }] = await Promise.all([
+        admin
+          .from("calendar_connections")
+          .select(
+            "id, google_email, staff_id, calendar_id, calendar_summary, push_enabled, busy_enabled, busy_synced_at, sync_error, created_at",
+          )
+          .eq("business_id", business.id)
+          .order("created_at"),
+        admin
+          .from("staff")
+          .select("id, name, is_active, is_bookable")
+          .eq("business_id", business.id)
+          .eq("is_active", true)
+          .order("order_index"),
+      ]);
+      gcalConnections = (connRows ?? []).map((c) => ({
+        id: c.id,
+        googleEmail: c.google_email,
+        staffId: c.staff_id,
+        calendarId: c.calendar_id,
+        calendarSummary: c.calendar_summary,
+        pushEnabled: c.push_enabled,
+        busyEnabled: c.busy_enabled,
+        busySyncedAt: c.busy_synced_at,
+        syncError: c.sync_error,
+      }));
+      staffOptions = (staffRows ?? []).map((s) => ({ id: s.id, name: s.name }));
+    } catch (e) {
+      console.error("[gcal] settings load failed", e);
+    }
+  }
+  const gcalFlag = (await searchParams).gcal ?? null;
+
   // Subscription summary for the top-of-page card.
   const planState = await getPlanState(supabase, business.id);
   const st = t.settings;
@@ -184,6 +234,14 @@ export default async function SettingsPage({
         />
 
         <HoursEditor locale={locale} initialDays={initialDays} />
+
+        <GoogleCalendarSection
+          locale={locale}
+          configured={gcalReady}
+          connections={gcalConnections}
+          staffOptions={staffOptions}
+          statusFlag={gcalFlag}
+        />
 
         {/* Danger zone — delete shop (24h grace, cancellable) */}
         <DeleteShop

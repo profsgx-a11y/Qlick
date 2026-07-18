@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale } from "@/i18n/config";
+import { queueGcalSync } from "@/lib/google/sync";
 
 export type BookingStatus =
   | "pending"
@@ -83,6 +84,7 @@ export async function updateBookingStatus(
 
   if (error) return { ok: false, error: "save_failed" };
 
+  queueGcalSync([bookingId]);
   revalidatePath(`/${safeLocale}/dashboard/bookings`);
   revalidatePath(`/${safeLocale}/dashboard/calendar`);
   revalidatePath(`/${safeLocale}/dashboard`);
