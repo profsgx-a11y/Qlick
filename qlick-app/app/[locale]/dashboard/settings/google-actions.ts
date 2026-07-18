@@ -7,11 +7,10 @@ import { hasLocale } from "@/i18n/config";
 import { gcalConfigured } from "@/lib/google/calendar";
 import {
   applyConnectionSettings,
+  countUnregisteredEvents,
   listCalendarsForConnection,
   pushAllFutureBookings,
   removeConnection,
-  syncBusyForBusiness,
-  type BusySyncResult,
   type SyncCounts,
 } from "@/lib/google/sync";
 
@@ -102,19 +101,17 @@ export async function updateGoogleConnection(
 
   const admin = createAdminClient();
 
-  // Staff mapping: required while the business has bookable staff, and the
-  // chosen person must be an active member of THIS business.
-  const { data: staffRows } = await admin
-    .from("staff")
-    .select("id, is_active, is_bookable")
-    .eq("business_id", ctx.bizId);
-  const hasBookable = (staffRows ?? []).some((s) => s.is_active && s.is_bookable);
+  // Staff mapping is optional: null = a business-wide calendar that receives
+  // every staff member's appointments. When a person is chosen they must be
+  // an active member of THIS business.
   const staffId = input.staffId || null;
   if (staffId) {
+    const { data: staffRows } = await admin
+      .from("staff")
+      .select("id, is_active")
+      .eq("business_id", ctx.bizId);
     const valid = (staffRows ?? []).some((s) => s.id === staffId && s.is_active);
     if (!valid) return { ok: false, error: "gcal_invalid_staff" };
-  } else if (hasBookable) {
-    return { ok: false, error: "gcal_staff_required" };
   }
 
   const calendarId = input.calendarId.trim() || "primary";
@@ -158,22 +155,33 @@ export async function pushAllFutureToGoogle(
   return { ok: true, counts };
 }
 
-export interface BusySyncActionResult {
+export interface SyncNowResult {
   ok: boolean;
   error?: string;
-  results?: BusySyncResult[];
+  /** created + updated + deleted events pushed to Google. */
+  pushed?: number;
+  /** upcoming Google events not yet in Qlick (and not dismissed). */
+  unregistered?: number;
 }
 
-export async function syncGoogleBusyNow(
-  locale: string,
-): Promise<BusySyncActionResult> {
+/**
+ * Full manual sync from the Bookings tab: push every future booking to
+ * Google, then count Google events that aren't Qlick bookings yet. When some
+ * exist the caller sends the owner to the import screen to review them.
+ */
+export async function syncGoogleNow(locale: string): Promise<SyncNowResult> {
   const ctx = await requireManagedBusiness();
   if ("error" in ctx) return { ok: false, error: ctx.error };
   if (!gcalConfigured()) return { ok: false, error: "gcal_not_configured" };
 
-  const results = await syncBusyForBusiness(ctx.bizId);
+  const counts = await pushAllFutureBookings(ctx.bizId);
+  const unregistered = await countUnregisteredEvents(ctx.bizId);
   revalidateDash(locale);
-  return { ok: true, results };
+  return {
+    ok: true,
+    pushed: counts.created + counts.updated + counts.deleted,
+    unregistered,
+  };
 }
 
 export async function disconnectGoogle(

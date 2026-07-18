@@ -188,26 +188,18 @@ export default async function CalendarPage({
       const [h, m] = t.split(":").map(Number);
       return h * 60 + m;
     };
-    const [{ data: shRows }, { data: toRows }, { data: busyRows }] =
-      await Promise.all([
-        supabase
-          .from("staff_hours")
-          .select("staff_id, day_of_week, open_time, close_time")
-          .in("staff_id", staffIds),
-        supabase
-          .from("staff_time_off")
-          .select("staff_id, starts_at, ends_at, reason")
-          .eq("business_id", business.id)
-          .lt("starts_at", to.toISOString())
-          .gt("ends_at", from.toISOString()),
-        // Google busy blocks (members can read; times only, no titles).
-        supabase
-          .from("external_busy_events")
-          .select("staff_id, starts_at, ends_at")
-          .eq("business_id", business.id)
-          .lt("starts_at", to.toISOString())
-          .gt("ends_at", from.toISOString()),
-      ]);
+    const [{ data: shRows }, { data: toRows }] = await Promise.all([
+      supabase
+        .from("staff_hours")
+        .select("staff_id, day_of_week, open_time, close_time")
+        .in("staff_id", staffIds),
+      supabase
+        .from("staff_time_off")
+        .select("staff_id, starts_at, ends_at, reason")
+        .eq("business_id", business.id)
+        .lt("starts_at", to.toISOString())
+        .gt("ends_at", from.toISOString()),
+    ]);
     const customStaff = new Set((shRows ?? []).map((r) => r.staff_id));
     // Per weekday in the visible range, derive each staff's open window.
     for (const d of days) {
@@ -248,32 +240,6 @@ export default async function CalendarPage({
           endMin,
           reason: r.reason,
         });
-      }
-    }
-    // Google busy blocks render like time-off, labeled "Google · Busy".
-    // Business-wide rows (staff_id null) block every column.
-    for (const r of busyRows ?? []) {
-      const targets = r.staff_id ? [r.staff_id] : staffIds;
-      for (const d of days) {
-        const { from: dFrom, to: dTo } = dayRangeUtc(d, tz);
-        const s = Math.max(new Date(r.starts_at).getTime(), dFrom.getTime());
-        const e = Math.min(new Date(r.ends_at).getTime(), dTo.getTime());
-        if (e <= s) continue;
-        const startMin =
-          s <= dFrom.getTime()
-            ? 0
-            : minutesFromMidnight(new Date(s).toISOString(), tz);
-        const endMin =
-          e >= dTo.getTime()
-            ? 24 * 60
-            : minutesFromMidnight(new Date(e).toISOString(), tz);
-        for (const staffId of targets) {
-          (staffTimeOff[`${d}|${staffId}`] ??= []).push({
-            startMin,
-            endMin,
-            reason: dash.gcal.busyBlockLabel,
-          });
-        }
       }
     }
   }

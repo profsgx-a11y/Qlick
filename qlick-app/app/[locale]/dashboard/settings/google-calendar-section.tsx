@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Check,
-  CloudUpload,
   Download,
   Link2,
   RefreshCw,
@@ -21,8 +21,6 @@ import { dashErr } from "@/lib/dash-error";
 import {
   disconnectGoogle,
   getGoogleCalendars,
-  pushAllFutureToGoogle,
-  syncGoogleBusyNow,
   updateGoogleConnection,
 } from "./google-actions";
 
@@ -43,19 +41,23 @@ export function GoogleCalendarSection({
   configured,
   connections,
   staffOptions,
-  hasBookableStaff,
   statusFlag,
 }: {
   locale: string;
   configured: boolean;
   connections: GcalConnectionView[];
   staffOptions: { id: string; name: string }[];
-  hasBookableStaff: boolean;
   statusFlag: string | null;
 }) {
   const t = useDict().dashboard.gcal;
 
   const banner = statusFlag ? bannerFor(statusFlag, t) : null;
+
+  // Success popup after a fresh connect (portal to body so transformed
+  // ancestors don't trap the fixed overlay).
+  const [mounted, setMounted] = useState(false);
+  const [showConnected, setShowConnected] = useState(statusFlag === "connected");
+  useEffect(() => setMounted(true), []);
 
   return (
     <section
@@ -85,6 +87,17 @@ export function GoogleCalendarSection({
         )}
       </div>
 
+      {configured && (
+        <div className="mt-4 space-y-2">
+          <p className="rounded-xl border border-border bg-background px-4 py-2.5 text-xs leading-relaxed text-muted">
+            {t.optionalNote}
+          </p>
+          <p className="rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-xs leading-relaxed text-gold">
+            {t.manageWarning}
+          </p>
+        </div>
+      )}
+
       {banner && (
         <p
           className={
@@ -109,7 +122,6 @@ export function GoogleCalendarSection({
               locale={locale}
               conn={c}
               staffOptions={staffOptions}
-              hasBookableStaff={hasBookableStaff}
             />
           ))}
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
@@ -123,6 +135,37 @@ export function GoogleCalendarSection({
           </div>
         </div>
       )}
+
+      {mounted &&
+        showConnected &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setShowConnected(false)}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl border border-gold/30 bg-surface p-6 text-center shadow-[0_24px_64px_-16px_rgba(0,0,0,0.6)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-gold/30 bg-gold/10">
+                <Check className="size-6 text-gold" />
+              </div>
+              <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+                {t.connectedPopupTitle}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted">
+                {t.statusConnected}
+              </p>
+              <Button
+                className="mt-5 w-full"
+                onClick={() => setShowConnected(false)}
+              >
+                {t.connectedPopupCta}
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }
@@ -151,12 +194,10 @@ function ConnectionCard({
   locale,
   conn,
   staffOptions,
-  hasBookableStaff,
 }: {
   locale: string;
   conn: GcalConnectionView;
   staffOptions: { id: string; name: string }[];
-  hasBookableStaff: boolean;
 }) {
   const dict = useDict().dashboard;
   const t = dict.gcal;
@@ -165,7 +206,6 @@ function ConnectionCard({
   const [staffId, setStaffId] = useState(conn.staffId ?? "");
   const [calendarId, setCalendarId] = useState(conn.calendarId);
   const [pushEnabled, setPushEnabled] = useState(conn.pushEnabled);
-  const [busyEnabled, setBusyEnabled] = useState(conn.busyEnabled);
   const [calendars, setCalendars] = useState<SelectOption[] | null>(null);
   const [calError, setCalError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -175,12 +215,10 @@ function ConnectionCard({
   const [working, startWorking] = useTransition();
 
   const needsReconnect = conn.syncError === "reconnect_required";
-  const needsStaff = hasBookableStaff && !staffId;
   const dirty =
     staffId !== (conn.staffId ?? "") ||
     calendarId !== conn.calendarId ||
-    pushEnabled !== conn.pushEnabled ||
-    busyEnabled !== conn.busyEnabled;
+    pushEnabled !== conn.pushEnabled;
 
   // Load the owner's calendar list once per card (live from Google).
   useEffect(() => {
@@ -209,15 +247,9 @@ function ConnectionCard({
     [{ value: conn.calendarId, label: conn.calendarSummary ?? conn.calendarId }];
 
   const staffSelectOptions: SelectOption[] = [
-    ...(!hasBookableStaff ? [{ value: "", label: t.wholeShop }] : []),
+    { value: "", label: t.wholeShop },
     ...staffOptions.map((s) => ({ value: s.id, label: s.name })),
   ];
-
-  const fmtWhen = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "el-GR", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
 
   const save = () =>
     startSaving(async () => {
@@ -229,7 +261,7 @@ function ConnectionCard({
         calendarId,
         calendarSummary: chosen?.label ?? null,
         pushEnabled,
-        busyEnabled,
+        busyEnabled: false,
       });
       if (!res.ok) {
         setErr(dashErr(dict.errors, res.error, t.saveFailed));
@@ -244,52 +276,7 @@ function ConnectionCard({
           ),
         );
       }
-      if (res.busyEvents !== null && res.busyEvents !== undefined) {
-        parts.push(t.busySyncDone.replace("{n}", String(res.busyEvents)));
-      }
       setMsg(parts.join(" · "));
-      router.refresh();
-    });
-
-  const pushAll = () =>
-    startWorking(async () => {
-      setErr(null);
-      setMsg(null);
-      const res = await pushAllFutureToGoogle(locale);
-      if (!res.ok || !res.counts) {
-        setErr(dashErr(dict.errors, res.error, t.saveFailed));
-        return;
-      }
-      const done = res.counts.created + res.counts.updated + res.counts.deleted;
-      setMsg(
-        res.counts.failed > 0
-          ? t.pushAllPartial
-              .replace("{n}", String(done))
-              .replace("{failed}", String(res.counts.failed))
-          : t.pushAllDone.replace("{n}", String(done)),
-      );
-      router.refresh();
-    });
-
-  const syncBusy = () =>
-    startWorking(async () => {
-      setErr(null);
-      setMsg(null);
-      const res = await syncGoogleBusyNow(locale);
-      if (!res.ok || !res.results) {
-        setErr(dashErr(dict.errors, res.error, t.saveFailed));
-        return;
-      }
-      const mine = res.results.find((r) => r.connectionId === conn.id);
-      if (mine && !mine.ok) {
-        setErr(
-          mine.error === "reconnect_required"
-            ? dict.errors.gcal_reconnect
-            : dict.errors.gcal_api_error,
-        );
-      } else {
-        setMsg(t.busySyncDone.replace("{n}", String(mine?.events ?? 0)));
-      }
       router.refresh();
     });
 
@@ -315,11 +302,6 @@ function ConnectionCard({
             <p className="truncate text-sm font-semibold text-foreground">
               {conn.googleEmail}
             </p>
-            <p className="text-xs text-muted">
-              {conn.busySyncedAt
-                ? t.busyLastSync.replace("{when}", fmtWhen(conn.busySyncedAt))
-                : t.busyNever}
-            </p>
           </div>
         </div>
         {needsReconnect ? (
@@ -342,12 +324,6 @@ function ConnectionCard({
           </span>
         )}
       </div>
-
-      {needsStaff && (
-        <p className="mt-3 rounded-xl border border-gold/30 bg-gold/10 px-4 py-2.5 text-sm text-gold">
-          {t.needsSetupBody}
-        </p>
-      )}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
@@ -380,10 +356,13 @@ function ConnectionCard({
             ariaLabel={t.staffLabel}
             placeholder={t.staffPlaceholder}
           />
+          <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            {staffId ? t.ownerStaffHint : t.ownerBusinessHint}
+          </p>
         </div>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">{t.pushLabel}</p>
@@ -393,17 +372,6 @@ function ConnectionCard({
             checked={pushEnabled}
             onChange={setPushEnabled}
             aria-label={t.pushLabel}
-          />
-        </div>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">{t.busyLabel}</p>
-            <p className="text-xs leading-relaxed text-muted">{t.busyDesc}</p>
-          </div>
-          <Switch
-            checked={busyEnabled}
-            onChange={setBusyEnabled}
-            aria-label={t.busyLabel}
           />
         </div>
       </div>
@@ -419,28 +387,6 @@ function ConnectionCard({
           <Button onClick={save} disabled={saving || working}>
             {saving ? t.saving : t.save}
           </Button>
-        )}
-        {!dirty && !needsStaff && (
-          <>
-            <Button
-              variant="outline"
-              onClick={pushAll}
-              disabled={working || saving || !conn.pushEnabled || needsReconnect}
-              title={!conn.pushEnabled ? t.pushDisabledHint : undefined}
-            >
-              <CloudUpload className="size-4" />
-              {working ? t.working : t.pushAllCta}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={syncBusy}
-              disabled={working || saving || !conn.busyEnabled || needsReconnect}
-              title={!conn.busyEnabled ? t.busyDisabledHint : undefined}
-            >
-              <RefreshCw className="size-4" />
-              {working ? t.working : t.busySyncCta}
-            </Button>
-          </>
         )}
         <div className="ml-auto">
           {!confirmingUnlink ? (

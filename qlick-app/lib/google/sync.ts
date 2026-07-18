@@ -746,6 +746,60 @@ export async function markEventsAdopted(
 }
 
 /**
+ * How many upcoming Google events across all of the business's connections
+ * are not yet Qlick bookings (and weren't dismissed). Drives the "found
+ * unregistered appointments" prompt after a manual sync.
+ */
+export async function countUnregisteredEvents(
+  businessId: string,
+): Promise<number> {
+  const admin = createAdminClient();
+  const { data: conns } = await admin
+    .from("calendar_connections")
+    .select("id")
+    .eq("business_id", businessId);
+  let total = 0;
+  for (const c of conns ?? []) {
+    const res = await listImportableEventsForConnection(c.id);
+    if (res.ok) total += res.events.length;
+  }
+  return total;
+}
+
+/**
+ * Marks Google events the owner chose NOT to import with qlickIgnored, so
+ * they stop showing up as "unregistered appointments" on future syncs.
+ * Best effort — a failed marker only means it may be offered again.
+ */
+export async function ignoreImportableEvents(
+  connectionId: string,
+  eventIds: string[],
+): Promise<void> {
+  const ids = [...new Set(eventIds.filter(Boolean))];
+  if (ids.length === 0) return;
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("calendar_connections")
+    .select(CONNECTION_COLS_SECRET)
+    .eq("id", connectionId)
+    .maybeSingle();
+  if (!data) return;
+  const conn = data as ConnectionSecretRow;
+  const token = await accessTokenFor(admin, conn, new Map());
+  if (!token) return;
+
+  await inPool(ids, 4, async (eventId) => {
+    try {
+      await patchEvent(token, conn.calendar_id, eventId, {
+        extendedProperties: { private: { qlickIgnored: "1" } },
+      });
+    } catch (e) {
+      console.error("[gcal] ignore marker failed", eventId, e);
+    }
+  });
+}
+
+/**
  * Remove a connection: best-effort token revoke at Google, then delete the
  * row (busy events cascade; bookings keep gcal_event_id so a later
  * reconnect of the same account re-adopts the events).

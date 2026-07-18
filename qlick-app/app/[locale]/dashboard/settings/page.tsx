@@ -115,7 +115,6 @@ export default async function SettingsPage({
   const gcalReady = gcalConfigured();
   let gcalConnections: GcalConnectionView[] = [];
   let staffOptions: { id: string; name: string }[] = [];
-  let hasBookableStaff = false;
   if (gcalReady) {
     try {
       const admin = createAdminClient();
@@ -146,7 +145,6 @@ export default async function SettingsPage({
         syncError: c.sync_error,
       }));
       staffOptions = (staffRows ?? []).map((s) => ({ id: s.id, name: s.name }));
-      hasBookableStaff = (staffRows ?? []).some((s) => s.is_bookable);
     } catch (e) {
       console.error("[gcal] settings load failed", e);
     }
@@ -242,7 +240,6 @@ export default async function SettingsPage({
           configured={gcalReady}
           connections={gcalConnections}
           staffOptions={staffOptions}
-          hasBookableStaff={hasBookableStaff}
           statusFlag={gcalFlag}
         />
 

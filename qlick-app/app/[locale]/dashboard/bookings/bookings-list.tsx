@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Check,
   X,
@@ -15,6 +16,7 @@ import {
   CalendarDays,
   Upload,
   Download,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +30,7 @@ import {
   clearBookings,
   type BookingStatus,
 } from "./actions";
+import { syncGoogleNow } from "../settings/google-actions";
 
 export interface BookingRow {
   id: string;
@@ -45,14 +48,36 @@ interface Props {
   locale: string;
   timeZone: string;
   initial: BookingRow[];
+  hasGcal: boolean;
 }
 
 type Tab = "upcoming" | "past" | "cancelled" | "all";
 
-export function BookingsList({ locale, timeZone, initial }: Props) {
+export function BookingsList({ locale, timeZone, initial, hasGcal }: Props) {
   const dashDict = useDict().dashboard;
   const d = dashDict.bookings;
   const imp = dashDict.import;
+  const gcal = dashDict.gcal;
+  const router = useRouter();
+  const [syncing, startSync] = useTransition();
+  const [gcalMsg, setGcalMsg] = useState<string | null>(null);
+
+  const runGcalSync = () =>
+    startSync(async () => {
+      const res = await syncGoogleNow(locale);
+      if (!res.ok) {
+        setGcalMsg(gcal.syncNowFailed);
+        setTimeout(() => setGcalMsg(null), 6000);
+        return;
+      }
+      // Google events not yet in Qlick → send the owner to review/import them.
+      if ((res.unregistered ?? 0) > 0) {
+        router.push(`/${locale}/dashboard/bookings/google-import?prompt=1`);
+        return;
+      }
+      setGcalMsg(gcal.syncNowDone.replace("{pushed}", String(res.pushed ?? 0)));
+      setTimeout(() => setGcalMsg(null), 6000);
+    });
   const STATUS_META: Record<string, { label: string; cls: string }> = {
     pending: {
       label: d.statusPending,
@@ -170,6 +195,11 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
 
   return (
     <div className="space-y-5">
+      {gcalMsg && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl border border-gold/30 bg-surface px-4 py-2.5 text-sm text-gold shadow-[0_12px_32px_-8px_rgba(0,0,0,0.5)]">
+          {gcalMsg}
+        </div>
+      )}
       {/* Tabs (left) + import/export (right); tabs scroll on narrow screens */}
       <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="overflow-x-auto pb-1">
@@ -205,6 +235,16 @@ export function BookingsList({ locale, timeZone, initial }: Props) {
 
       {/* Bring appointments in from Excel / take them with you */}
       <div className="flex shrink-0 items-center gap-2">
+        {hasGcal && (
+          <button
+            onClick={runGcalSync}
+            disabled={syncing}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-gold/50 hover:bg-gold/10 hover:text-gold active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
+            {syncing ? gcal.syncNowWorking : gcal.syncNowCta}
+          </button>
+        )}
         <Link
           href={`/${locale}/dashboard/bookings/import`}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-gold/50 hover:bg-gold/10 hover:text-gold active:scale-95"

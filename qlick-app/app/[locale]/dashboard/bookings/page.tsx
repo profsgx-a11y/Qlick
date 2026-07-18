@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Topbar } from "@/components/dashboard/topbar";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireBusiness } from "@/lib/dashboard";
+import { gcalConfigured } from "@/lib/google/calendar";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { BookingsList, type BookingRow } from "./bookings-list";
 
@@ -32,6 +34,17 @@ export default async function BookingsPage({
       .maybeSingle(),
   ]);
 
+  // Show the "Sync Google" button only when the shop has a connected calendar
+  // (tokens are server-only, so this is read with the admin client).
+  let hasGcal = false;
+  if (gcalConfigured()) {
+    const { count } = await createAdminClient()
+      .from("calendar_connections")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", business.id);
+    hasGcal = (count ?? 0) > 0;
+  }
+
   return (
     <>
       <Topbar
@@ -45,6 +58,7 @@ export default async function BookingsPage({
           locale={locale}
           timeZone={biz?.timezone || "Europe/Athens"}
           initial={(bookings ?? []) as BookingRow[]}
+          hasGcal={hasGcal}
         />
       </div>
     </>

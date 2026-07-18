@@ -11,26 +11,34 @@ import { GoogleImportClient, type GcalImportConnection } from "./google-import-c
 
 export default async function GoogleImportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ prompt?: string }>;
 }) {
   const { locale } = await params;
   if (!hasLocale(locale)) notFound();
+  const autoPrompt = (await searchParams).prompt === "1";
   const t = (await getDictionary(locale)).dashboard;
 
   const { business, fullName, email } = await requireBusiness(locale);
   const supabase = await createClient();
 
-  const { data: services } = await supabase
+  const { data: serviceRows } = await supabase
     .from("services")
-    .select("id, name")
+    .select("id, name, duration_minutes")
     .eq("business_id", business.id)
     .eq("is_active", true)
     .order("name");
+  const services = (serviceRows ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    durationMinutes: s.duration_minutes,
+  }));
 
   // Connections (safe fields only) + whether staff mapping is still pending.
   let connections: GcalImportConnection[] = [];
-  let hasBookableStaff = false;
+  let staffOptions: { id: string; name: string }[] = [];
   if (gcalConfigured()) {
     try {
       const admin = createAdminClient();
@@ -42,17 +50,17 @@ export default async function GoogleImportPage({
           .order("created_at"),
         admin
           .from("staff")
-          .select("id, is_active, is_bookable")
-          .eq("business_id", business.id),
+          .select("id, name, is_active, is_bookable")
+          .eq("business_id", business.id)
+          .order("order_index"),
       ]);
-      hasBookableStaff = (staffRows ?? []).some(
-        (s) => s.is_active && s.is_bookable,
-      );
+      const bookable = (staffRows ?? []).filter((s) => s.is_active && s.is_bookable);
+      staffOptions = bookable.map((s) => ({ id: s.id, name: s.name }));
       connections = (connRows ?? []).map((c) => ({
         id: c.id,
         googleEmail: c.google_email,
         calendarSummary: c.calendar_summary,
-        needsSetup: hasBookableStaff && !c.staff_id,
+        needsSetup: false,
       }));
     } catch (e) {
       console.error("[gcal] import page load failed", e);
@@ -81,7 +89,9 @@ export default async function GoogleImportPage({
           <GoogleImportClient
             locale={locale}
             connections={connections}
-            services={services ?? []}
+            services={services}
+            staff={staffOptions}
+            autoPrompt={autoPrompt}
           />
         )}
       </div>
