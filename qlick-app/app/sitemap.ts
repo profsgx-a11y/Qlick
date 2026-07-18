@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { guides } from "@/lib/guides";
 
-const BASE = "https://www.qlick.gr";
+const BASE = "https://qlick.gr";
 const LOCALES = ["el", "en"] as const;
 // Public marketing paths worth indexing (relative to /{locale}).
 const STATIC_PATHS = [

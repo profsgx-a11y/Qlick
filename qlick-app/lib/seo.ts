@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 /**
  * Builds per-page metadata with a canonical URL and el/en hreflang alternates
- * (resolved against metadataBase → https://www.qlick.gr). `path` is the route
+ * (resolved against metadataBase → https://qlick.gr). `path` is the route
  * without the locale prefix, e.g. "/for-business" or "" for the homepage.
  */
 export function pageMetadata(

@@ -51,9 +51,9 @@ export async function generateMetadata({
   return {
     title: { default: dict.meta.title, template: "%s · Qlick" },
     description: dict.meta.description,
-    // Canonical serving domain (qlick.gr 308-redirects to www), so OG/Twitter
-    // image URLs resolve directly with no redirect for social scrapers.
-    metadataBase: new URL("https://www.qlick.gr"),
+    // Canonical serving domain (apex; www 308-redirects here), so canonical,
+    // OG/Twitter image URLs resolve directly with no redirect.
+    metadataBase: new URL("https://qlick.gr"),
     openGraph: {
       title: dict.meta.title,
       description: dict.meta.description,

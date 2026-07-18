@@ -11,7 +11,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/api/", "/*/dashboard", "/*/account", "/*/admin"],
     },
-    sitemap: "https://www.qlick.gr/sitemap.xml",
-    host: "https://www.qlick.gr",
+    sitemap: "https://qlick.gr/sitemap.xml",
+    host: "https://qlick.gr",
   };
 }
