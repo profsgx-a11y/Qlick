@@ -1,6 +1,24 @@
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
 import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/privacy",
+    isEl ? "Πολιτική απορρήτου" : "Privacy Policy",
+    isEl
+      ? "Πώς το Qlick συλλέγει, χρησιμοποιεί και προστατεύει τα προσωπικά σου δεδομένα."
+      : "How Qlick collects, uses and protects your personal data.",
+  );
+}
 
 export default async function PrivacyPage({
   params,

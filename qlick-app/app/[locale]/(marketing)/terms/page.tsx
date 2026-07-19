@@ -1,6 +1,24 @@
 import { notFound } from "next/navigation";
 import { hasLocale } from "@/i18n/config";
+import { pageMetadata } from "@/lib/seo";
 import { LegalPage, type LegalSection } from "@/components/marketing/legal-page";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const isEl = locale !== "en";
+  return pageMetadata(
+    locale,
+    "/terms",
+    isEl ? "Όροι χρήσης" : "Terms of Service",
+    isEl
+      ? "Οι όροι χρήσης της πλατφόρμας online ραντεβού Qlick για επιχειρήσεις και πελάτες."
+      : "The terms of service for the Qlick online booking platform, for businesses and customers.",
+  );
+}
 
 export default async function TermsPage({
   params,
