@@ -55,9 +55,26 @@ export default async function PrivacyPage({
         {
           heading: "Google Calendar (προαιρετική σύνδεση για επαγγελματίες)",
           body: [
-            "Αν συνδέσεις το Google Calendar σου, το Qlick: (α) δημιουργεί/ενημερώνει/διαγράφει στο ημερολόγιό σου ένα event για κάθε ραντεβού του Qlick, (β) εφόσον το ενεργοποιήσεις, διαβάζει ποιες ώρες είσαι απασχολημένος ώστε να μην δέχεσαι online κρατήσεις εκείνες τις ώρες, και (γ) σου επιτρέπει μια εφάπαξ εισαγωγή των προσεχών ραντεβού σου από το Google στο Qlick.",
-            "Αποθηκεύουμε μόνο: κρυπτογραφημένα διακριτικά πρόσβασης (tokens), το αναγνωριστικό του ημερολογίου που επέλεξες και τις ώρες έναρξης/λήξης των απασχολημένων διαστημάτων — όχι τίτλους, περιγραφές, τοποθεσίες ή συμμετέχοντες. Μπορείς να αποσυνδέσεις το ημερολόγιο ανά πάσα στιγμή από τις Ρυθμίσεις· τότε διαγράφουμε τα tokens και τα αποθηκευμένα διαστήματα.",
-            "Η χρήση δεδομένων που λαμβάνονται από Google APIs συμμορφώνεται με την Πολιτική Δεδομένων Χρήστη των Υπηρεσιών Google API (Google API Services User Data Policy), συμπεριλαμβανομένων των απαιτήσεων Περιορισμένης Χρήσης (Limited Use). Δεν πωλούνται, δεν χρησιμοποιούνται για διαφημίσεις και δεν χρησιμοποιούνται για εκπαίδευση μοντέλων.",
+            "Αν συνδέσεις το Google Calendar σου, το Qlick: (α) δημιουργεί, ενημερώνει και διαγράφει στο ημερολόγιό σου ένα event για κάθε ραντεβού του Qlick, και (β) όταν πατήσεις εσύ «Συγχρονισμός», διαβάζει τα προσεχή events του ημερολογίου που επέλεξες, ώστε να μπορείς να εισαγάγεις στο Qlick ραντεβού που δεν έχουν καταχωρηθεί. Η ανάγνωση γίνεται μόνο κατόπιν δικής σου ενέργειας.",
+            "Αποθηκεύουμε μόνο: κρυπτογραφημένα διακριτικά πρόσβασης (tokens), το αναγνωριστικό και το όνομα του ημερολογίου που επέλεξες και —αποκλειστικά για όσα events επιλέξεις να εισαγάγεις— την ώρα έναρξης/λήξης και τον τίτλο τους. Δεν αποθηκεύουμε περιγραφές, τοποθεσίες ή συμμετέχοντες. Μπορείς να αποσυνδέσεις το ημερολόγιο ανά πάσα στιγμή από τις Ρυθμίσεις· τότε ανακαλούμε την πρόσβαση και διαγράφουμε τα tokens.",
+            "Η χρήση και μεταφορά δεδομένων που λαμβάνονται από Google APIs συμμορφώνεται με την Πολιτική Δεδομένων Χρήστη των Υπηρεσιών Google API (Google API Services User Data Policy), συμπεριλαμβανομένων των απαιτήσεων Περιορισμένης Χρήσης (Limited Use). Δεν πωλούνται, δεν χρησιμοποιούνται για διαφημίσεις και δεν χρησιμοποιούνται για εκπαίδευση μοντέλων τεχνητής νοημοσύνης ή μηχανικής μάθησης.",
+          ],
+        },
+        {
+          heading: "Με ποιους μοιραζόμαστε δεδομένα",
+          body: [
+            "Δεν πουλάμε, δεν ενοικιάζουμε και δεν κοινοποιούμε προσωπικά δεδομένα ή δεδομένα χρήστη Google (Google user data) σε τρίτους για διαφημιστικούς ή εμπορικούς σκοπούς.",
+            "Δεδομένα χρήστη Google δεν μεταφέρονται σε κανέναν τρίτο, με μοναδική εξαίρεση τους παρόχους υποδομής που ενεργούν ως εκτελούντες την επεξεργασία για λογαριασμό μας, αποκλειστικά για να λειτουργήσει η υπηρεσία: Supabase (βάση δεδομένων και ταυτοποίηση, servers στην ΕΕ — Φρανκφούρτη), Vercel (φιλοξενία της εφαρμογής) και Resend (αποστολή email της υπηρεσίας, π.χ. επιβεβαιώσεις ραντεβού).",
+            "Οι πάροχοι αυτοί δεσμεύονται συμβατικά να επεξεργάζονται τα δεδομένα μόνο κατ' εντολή μας και δεν τους επιτρέπεται να τα χρησιμοποιήσουν για δικούς τους σκοπούς. Δεν κοινοποιούμε δεδομένα σε τρίτους διαφημιστές, μεσίτες δεδομένων ή για εκπαίδευση μοντέλων ΤΝ. Ενδέχεται να κοινοποιήσουμε δεδομένα μόνο εφόσον απαιτηθεί από τον νόμο ή αρμόδια αρχή.",
+          ],
+        },
+        {
+          heading: "Πώς προστατεύουμε τα δεδομένα σου",
+          body: [
+            "Όλη η επικοινωνία με το Qlick γίνεται κρυπτογραφημένα μέσω HTTPS/TLS. Τα δεδομένα φυλάσσονται κρυπτογραφημένα κατά την αποθήκευση (encryption at rest) από τον πάροχο υποδομής μας.",
+            "Τα διακριτικά πρόσβασης (OAuth tokens) του Google Calendar αποθηκεύονται επιπλέον κρυπτογραφημένα με AES-256-GCM. Το κλειδί κρυπτογράφησης φυλάσσεται χωριστά από τη βάση, σε ασφαλείς μεταβλητές περιβάλλοντος του διακομιστή.",
+            "Τα tokens και τα ευαίσθητα δεδομένα είναι προσβάσιμα μόνο από τον διακομιστή: δεν αποστέλλονται ποτέ στον browser και δεν εκτίθενται μέσω δημόσιου API. Η βάση δεδομένων προστατεύεται με Row Level Security, ώστε κάθε κατάστημα και κάθε χρήστης να έχει πρόσβαση αποκλειστικά στα δικά του δεδομένα.",
+            "Η πρόσβαση του προσωπικού μας περιορίζεται στο ελάχιστο αναγκαίο. Μπορείς να ανακαλέσεις την πρόσβαση στο Google Calendar οποιαδήποτε στιγμή, είτε από τις Ρυθμίσεις του Qlick είτε από τις ρυθμίσεις ασφαλείας του Λογαριασμού σου Google.",
           ],
         },
         {
@@ -105,9 +122,26 @@ export default async function PrivacyPage({
         {
           heading: "Google Calendar (optional connection for businesses)",
           body: [
-            "If you connect your Google Calendar, Qlick: (a) creates/updates/deletes an event in your calendar for every Qlick appointment, (b) if you enable it, reads which hours you are busy so online bookings are blocked for those hours, and (c) lets you run a one-time import of your upcoming appointments from Google into Qlick.",
-            "We store only: encrypted access tokens, the ID of the calendar you chose, and the start/end times of busy intervals — no titles, descriptions, locations or attendees. You can disconnect the calendar at any time from Settings; we then delete the tokens and the stored intervals.",
-            "Qlick's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements. Google user data is never sold, never used for advertising, and never used to train models.",
+            "If you connect your Google Calendar, Qlick: (a) creates, updates and deletes an event in your calendar for every Qlick appointment, and (b) when you press “Sync”, reads upcoming events from the calendar you selected so you can import appointments that are not yet recorded in Qlick. Reading only ever happens as a result of your own action.",
+            "We store only: encrypted access tokens, the ID and name of the calendar you chose, and — solely for the events you choose to import — their start/end time and title. We do not store descriptions, locations or attendees. You can disconnect the calendar at any time from Settings; we then revoke access and delete the tokens.",
+            "Qlick's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements. Google user data is never sold, never used for advertising, and never used to train artificial intelligence or machine learning models.",
+          ],
+        },
+        {
+          heading: "Who we share data with",
+          body: [
+            "We do not sell, rent or disclose personal data or Google user data to third parties for advertising or commercial purposes.",
+            "Google user data is not transferred to any third party, with the sole exception of the infrastructure providers that act as data processors on our behalf, exclusively to operate the service: Supabase (database and authentication, servers in the EU — Frankfurt), Vercel (application hosting) and Resend (sending service emails, e.g. appointment confirmations).",
+            "These providers are contractually bound to process the data only on our instructions and may not use it for their own purposes. We do not share data with advertisers, data brokers, or for training AI models. We may disclose data only where required by law or a competent authority.",
+          ],
+        },
+        {
+          heading: "How we protect your data",
+          body: [
+            "All communication with Qlick is encrypted using HTTPS/TLS. Data is stored encrypted at rest by our infrastructure provider.",
+            "Google Calendar access tokens (OAuth tokens) are additionally encrypted with AES-256-GCM before being stored. The encryption key is kept separately from the database, in secure server-side environment variables.",
+            "Tokens and other sensitive data are accessible only from the server: they are never sent to the browser and are never exposed through a public API. The database is protected with Row Level Security, so each business and each user can access only their own data.",
+            "Internal staff access is limited to the minimum necessary. You can revoke Qlick's access to your Google Calendar at any time, either from Qlick Settings or from your Google Account security settings.",
           ],
         },
         {
@@ -133,7 +167,7 @@ export default async function PrivacyPage({
     <LegalPage
       eyebrow={isEl ? "Πολιτική Απορρήτου" : "Privacy Policy"}
       title={isEl ? "Πολιτική Απορρήτου" : "Privacy Policy"}
-      updated={isEl ? "Τελευταία ενημέρωση: Ιούνιος 2026" : "Last updated: June 2026"}
+      updated={isEl ? "Τελευταία ενημέρωση: Ιούλιος 2026" : "Last updated: July 2026"}
       intro={
         isEl
           ? "Σεβόμαστε τα προσωπικά σου δεδομένα. Εδώ εξηγούμε τι συλλέγουμε, γιατί και ποια δικαιώματα έχεις."
