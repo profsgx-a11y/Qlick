@@ -123,6 +123,71 @@ export function BookingFlow({
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // ── Keep the picks across a sign-in round-trip ───────────────
+  // The wizard lives in memory, so signing in with Google (or confirming a
+  // signup email, which can land in a new tab) would drop the customer back
+  // on step 1. Stash the picks while they're on the auth step and restore
+  // them when they come back signed in. localStorage, not sessionStorage,
+  // precisely because the return can happen in another tab.
+  const draftKey = `qlick:booking:${business.slug}`;
+  const clearDraft = () => {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      // storage blocked (private mode) — nothing to clean up
+    }
+  };
+
+  useEffect(() => {
+    if (step !== "auth" || !serviceId || !slot) return;
+    try {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({ serviceId, staffId, date, slot, at: Date.now() }),
+      );
+    } catch {
+      // storage blocked — the flow still works, it just won't restore
+    }
+  }, [step, serviceId, staffId, date, slot, draftKey]);
+
+  useEffect(() => {
+    // Only right after a sign-in; a plain refresh should still start clean.
+    if (!isAuthenticated) return;
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(draftKey);
+      localStorage.removeItem(draftKey); // one shot
+    } catch {
+      return;
+    }
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw) as {
+        serviceId: string;
+        staffId: string | null;
+        date: string;
+        slot: Slot;
+        at: number;
+      };
+      // Ignore stale drafts, services that no longer exist, and past slots.
+      if (Date.now() - d.at > 45 * 60 * 1000) return;
+      if (!services.some((s) => s.id === d.serviceId)) return;
+      if (new Date(d.slot.iso).getTime() <= Date.now()) return;
+      const [y, m] = d.date.split("-").map(Number);
+      setServiceId(d.serviceId);
+      setStaffId(d.staffId);
+      setDate(d.date);
+      setCur({ y, m });
+      setSlot(d.slot);
+      // Straight to confirm — if the slot went while they were away, the
+      // server says slot_taken and sends them back to pick another time.
+      setStep("confirm");
+    } catch {
+      // malformed draft — ignore it
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const tIso = todayIso();
   const daysInMonth = new Date(cur.y, cur.m, 0).getDate();
   const firstWeekday = (new Date(cur.y, cur.m - 1, 1).getDay() + 6) % 7; // Mon-first
@@ -261,6 +326,7 @@ export function BookingFlow({
         }
         return;
       }
+      clearDraft();
       setBookingId(res.bookingId ?? null);
       setStep("done");
     });
