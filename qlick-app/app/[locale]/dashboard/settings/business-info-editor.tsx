@@ -85,6 +85,9 @@ export function BusinessInfoEditor({
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>(
     { lat: initial.lat, lng: initial.lng },
   );
+  // True once the owner types the street by hand instead of picking a
+  // suggestion — then we re-geocode the text on save so the pin isn't stale.
+  const addrTouched = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -101,6 +104,7 @@ export function BusinessInfoEditor({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
+        addrTouched.current = false;
         // Also reverse-geocode so city field stays in sync with the new coords.
         try {
           const res = await fetch(
@@ -142,6 +146,7 @@ export function BusinessInfoEditor({
     setCity(a.city || a.label.split(",")[0]);
     if (a.postcode) setPostcode(a.postcode);
     setCoords({ lat: a.lat, lng: a.lng });
+    addrTouched.current = false;
     dirty();
   };
 
@@ -150,6 +155,7 @@ export function BusinessInfoEditor({
     if (a.city) setCity(a.city);
     if (a.postcode) setPostcode(a.postcode);
     setCoords({ lat: a.lat, lng: a.lng });
+    addrTouched.current = false;
     dirty();
   };
 
@@ -240,6 +246,31 @@ export function BusinessInfoEditor({
       return;
     }
     startTransition(async () => {
+      // Street typed by hand (no suggestion picked) → the stored coords are
+      // stale/empty. Geocode the typed address so the map pin matches. On
+      // failure we clear the coords and let the public map resolve the text.
+      let geo = coords;
+      if (addrTouched.current) {
+        geo = { lat: null, lng: null };
+        const q = [street, postcode, city]
+          .filter((s) => s.trim())
+          .join(", ")
+          .trim();
+        if (q.length >= 3) {
+          try {
+            const gr = await fetch(`/api/geocode?${new URLSearchParams({ q })}`);
+            const gd = (await gr.json()) as {
+              results?: { lat: number | null; lng: number | null }[];
+            };
+            const top = gd.results?.[0];
+            if (top && top.lat != null && top.lng != null) {
+              geo = { lat: top.lat, lng: top.lng };
+            }
+          } catch {
+            // geocode failed — leave coords null
+          }
+        }
+      }
       const res = await saveBusinessInfo(locale, {
         name,
         mobileNational,
@@ -250,8 +281,8 @@ export function BusinessInfoEditor({
         city,
         area,
         postcode,
-        lat: coords.lat,
-        lng: coords.lng,
+        lat: geo.lat,
+        lng: geo.lng,
         logoUrl,
         coverUrl,
         email,
@@ -262,6 +293,8 @@ export function BusinessInfoEditor({
         setError(dashErr(dd.errors, res.error, t.errGeneric));
         return;
       }
+      setCoords(geo);
+      addrTouched.current = false;
       setSaved(true);
     });
   };
@@ -537,6 +570,7 @@ export function BusinessInfoEditor({
             value={street}
             onChange={(v) => {
               setStreet(v);
+              addrTouched.current = true;
               dirty();
             }}
             onSelect={onSelect}
