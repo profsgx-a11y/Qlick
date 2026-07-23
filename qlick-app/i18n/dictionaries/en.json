@@ -1445,7 +1445,15 @@
         "gpsLocating": "Locating…",
         "gpsDone": "Location set",
         "gpsFailed": "Could not detect your location.",
-        "gpsHint": "Press this only while you are at your shop using your mobile. Sets the exact GPS location and automatically updates the city."
+        "gpsHint": "Press this only while you are at your shop using your mobile. Sets the exact GPS location and automatically updates the city.",
+        "mapSet": "Set on map",
+        "locationSet": "Location set",
+        "locationHint": "Press \"GPS\" if you're at the shop, or \"Set on map\" to pinpoint the exact spot. The pin is what customers use to find you — the address is just a label you can edit.",
+        "mapTitle": "Set location on the map",
+        "mapModalHint": "Drag the pin or click on the map to set your shop's exact spot.",
+        "mapSearching": "Finding address…",
+        "mapConfirm": "Confirm",
+        "mapCancel": "Cancel"
       }
     },
     "staff": {

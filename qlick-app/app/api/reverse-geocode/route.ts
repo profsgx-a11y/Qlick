@@ -35,11 +35,13 @@ export async function GET(request: NextRequest) {
       a.city || a.town || a.village || a.municipality || "";
     const suburb =
       a.suburb || a.neighbourhood || a.quarter || a.road || "";
+    const street = [a.road, a.house_number].filter(Boolean).join(" ");
+    const postcode = a.postcode || "";
     // Prefer the town/city name (e.g. "Κομοτηνή") over a hyper-local suburb
     // ("Ήφαιστος") — the search uses a wide radius, so city level is clearer.
     const label = city || suburb;
 
-    return NextResponse.json({ label });
+    return NextResponse.json({ label, street, city, postcode });
   } catch {
     return NextResponse.json({ label: "" });
   }

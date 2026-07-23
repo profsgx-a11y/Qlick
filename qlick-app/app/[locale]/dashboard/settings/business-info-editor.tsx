@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import dynamic from "next/dynamic";
 import { parsePhoneNumberFromString, type CountryCode } from "libphonenumber-js";
-import { CheckCircle, ImagePlus, Loader2, MapPin, X } from "lucide-react";
+import { CheckCircle, ImagePlus, Loader2, Map as MapIcon, MapPin, X } from "lucide-react";
+import type { PickedLocation } from "@/components/ui/map-picker";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +20,12 @@ import { useDict } from "@/i18n/provider";
 import { dashErr } from "@/lib/dash-error";
 import { isMobilePhone, isLandlinePhone, isValidEmail } from "@/lib/validation";
 import { saveBusinessInfo } from "./actions";
+
+// Leaflet touches window, so load the picker client-side only.
+const MapPicker = dynamic(
+  () => import("@/components/ui/map-picker").then((m) => m.MapPicker),
+  { ssr: false },
+);
 
 interface Props {
   locale: string;
@@ -88,6 +96,10 @@ export function BusinessInfoEditor({
   // True once the owner types the street by hand instead of picking a
   // suggestion — then we re-geocode the text on save so the pin isn't stale.
   const addrTouched = useRef(false);
+  // True once a precise pin is set THIS session (map / GPS / suggestion). The
+  // pin is authoritative: later text edits are just a label and never move it.
+  const hasExplicitPin = useRef(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -104,7 +116,7 @@ export function BusinessInfoEditor({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setCoords({ lat, lng });
-        addrTouched.current = false;
+        hasExplicitPin.current = true;
         // Also reverse-geocode so city field stays in sync with the new coords.
         try {
           const res = await fetch(
@@ -146,7 +158,6 @@ export function BusinessInfoEditor({
     setCity(a.city || a.label.split(",")[0]);
     if (a.postcode) setPostcode(a.postcode);
     setCoords({ lat: a.lat, lng: a.lng });
-    addrTouched.current = false;
     dirty();
   };
 
@@ -155,6 +166,19 @@ export function BusinessInfoEditor({
     if (a.city) setCity(a.city);
     if (a.postcode) setPostcode(a.postcode);
     setCoords({ lat: a.lat, lng: a.lng });
+    addrTouched.current = false;
+    hasExplicitPin.current = true;
+    dirty();
+  };
+
+  // Applied when the owner picks a spot on the map: the pin is authoritative,
+  // and the reverse-geocoded fields only fill in when they're non-empty.
+  const applyMapLocation = (loc: PickedLocation) => {
+    setCoords({ lat: loc.lat, lng: loc.lng });
+    if (loc.street) setStreet(loc.street);
+    if (loc.city) setCity(loc.city);
+    if (loc.postcode) setPostcode(loc.postcode);
+    hasExplicitPin.current = true;
     addrTouched.current = false;
     dirty();
   };
@@ -246,11 +270,12 @@ export function BusinessInfoEditor({
       return;
     }
     startTransition(async () => {
-      // Street typed by hand (no suggestion picked) → the stored coords are
-      // stale/empty. Geocode the typed address so the map pin matches. On
-      // failure we clear the coords and let the public map resolve the text.
+      // The map/GPS/suggestion pin is authoritative — keep it untouched. Only
+      // when there's no explicit pin AND the owner typed the street by hand do
+      // we re-geocode the text (falling back to null → the public map resolves
+      // the text itself).
       let geo = coords;
-      if (addrTouched.current) {
+      if (!hasExplicitPin.current && addrTouched.current) {
         geo = { lat: null, lng: null };
         const q = [street, postcode, city]
           .filter((s) => s.trim())
@@ -295,6 +320,7 @@ export function BusinessInfoEditor({
       }
       setCoords(geo);
       addrTouched.current = false;
+      hasExplicitPin.current = false;
       setSaved(true);
     });
   };
@@ -579,9 +605,9 @@ export function BusinessInfoEditor({
           />
         </Field>
 
-        {/* GPS location pin — lets the owner stand at their shop and set exact coords */}
+        {/* Precise location: stand at the shop (GPS) or pin it on a map */}
         <div className="space-y-1.5">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleSetGps}
@@ -595,15 +621,50 @@ export function BusinessInfoEditor({
               )}
               {gpsLoading ? t.gpsLocating : t.gpsSet}
             </button>
-            {gpsOk && (
+            <button
+              type="button"
+              onClick={() => setMapOpen(true)}
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-[transform,background-color,border-color,color] duration-200 ease-[var(--ease-out)] hover:border-gold hover:bg-gold/5 hover:text-gold active:scale-95 disabled:opacity-50"
+            >
+              <MapIcon className="size-4" />
+              {t.mapSet}
+            </button>
+            {gpsOk ? (
               <span className="inline-flex items-center gap-1 text-sm text-success">
                 <CheckCircle className="size-4" />
                 {t.gpsDone}
               </span>
-            )}
+            ) : coords.lat != null && coords.lng != null ? (
+              <span className="inline-flex items-center gap-1 text-sm text-muted">
+                <MapPin className="size-4 text-gold" />
+                {t.locationSet}
+              </span>
+            ) : null}
           </div>
-          <p className="text-xs text-muted-2">{t.gpsHint}</p>
+          <p className="text-xs text-muted-2">{t.locationHint}</p>
         </div>
+
+        {mapOpen && (
+          <MapPicker
+            open={mapOpen}
+            onClose={() => setMapOpen(false)}
+            onConfirm={applyMapLocation}
+            initial={{
+              lat: coords.lat,
+              lng: coords.lng,
+              query: [street, postcode, city].filter(Boolean).join(", "),
+            }}
+            locale={locale}
+            labels={{
+              title: t.mapTitle,
+              hint: t.mapModalHint,
+              confirm: t.mapConfirm,
+              cancel: t.mapCancel,
+              searching: t.mapSearching,
+            }}
+          />
+        )}
 
         <Field label={t.postcode} htmlFor="biz-postcode" required>
           <Input
