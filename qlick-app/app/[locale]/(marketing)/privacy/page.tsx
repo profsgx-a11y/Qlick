@@ -69,6 +69,14 @@ export default async function PrivacyPage({
           ],
         },
         {
+          heading: "Χάρτες (Google Maps & OpenStreetMap)",
+          body: [
+            "Στη δημόσια σελίδα κάθε καταστήματος ενσωματώνουμε χάρτη της Google (Google Maps), ώστε να βλέπεις πού βρίσκεται. Μόλις φορτώσει ο χάρτης, η Google λαμβάνει τη διεύθυνση IP σου και ενδέχεται να χρησιμοποιήσει cookies. Η Google ενεργεί ως ανεξάρτητος υπεύθυνος επεξεργασίας, βάσει της δικής της πολιτικής απορρήτου — εμείς δεν της αποστέλλουμε τα προσωπικά σου στοιχεία ούτε τα ραντεβού σου.",
+            "Στο περιβάλλον διαχείρισης, για την αναζήτηση διεύθυνσης και τον χάρτη ορισμού τοποθεσίας χρησιμοποιούμε OpenStreetMap (υπηρεσία Nominatim) και πλακίδια χάρτη CARTO. Σε αυτές αποστέλλονται μόνο η διεύθυνση ή οι συντεταγμένες που αναζητά ο ιδιοκτήτης, μαζί με τη διεύθυνση IP του.",
+            "Οι χάρτες φορτώνουν μόνο στις σελίδες όπου εμφανίζονται και δεν χρησιμοποιούνται για παρακολούθηση ή διαφήμιση.",
+          ],
+        },
+        {
           heading: "Πώς προστατεύουμε τα δεδομένα σου",
           body: [
             "Όλη η επικοινωνία με το Qlick γίνεται κρυπτογραφημένα μέσω HTTPS/TLS. Τα δεδομένα φυλάσσονται κρυπτογραφημένα κατά την αποθήκευση (encryption at rest) από τον πάροχο υποδομής μας.",
@@ -133,6 +141,14 @@ export default async function PrivacyPage({
             "We do not sell, rent or disclose personal data or Google user data to third parties for advertising or commercial purposes.",
             "Google user data is not transferred to any third party, with the sole exception of the infrastructure providers that act as data processors on our behalf, exclusively to operate the service: Supabase (database and authentication, servers in the EU — Frankfurt), Vercel (application hosting) and Resend (sending service emails, e.g. appointment confirmations).",
             "These providers are contractually bound to process the data only on our instructions and may not use it for their own purposes. We do not share data with advertisers, data brokers, or for training AI models. We may disclose data only where required by law or a competent authority.",
+          ],
+        },
+        {
+          heading: "Maps (Google Maps & OpenStreetMap)",
+          body: [
+            "Each public shop page embeds a Google Map so you can see where the business is. Once the map loads, Google receives your IP address and may use cookies. Google acts as an independent controller under its own privacy policy — we do not send it your personal details or your appointments.",
+            "Inside the dashboard, address search and the location picker use OpenStreetMap (the Nominatim service) and CARTO map tiles. Only the address or coordinates the owner is looking up is sent to them, together with the owner's IP address.",
+            "Maps load only on the pages where they appear and are never used for tracking or advertising.",
           ],
         },
         {
