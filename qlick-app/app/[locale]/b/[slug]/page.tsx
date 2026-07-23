@@ -12,6 +12,7 @@ import { Container } from "@/components/ui/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FavoriteButton } from "@/components/account/favorite-button";
 import { BookingModal } from "@/components/booking/booking-modal";
+import { ReviewsGrid } from "@/components/business/reviews-grid";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { formatPrice, formatDuration } from "@/lib/format";
@@ -277,12 +278,6 @@ export default async function PublicBusinessPage({
     }))
     .filter((r) => r.staff);
 
-  const fmtReviewDate = (iso: string) =>
-    new Intl.DateTimeFormat(locale === "el" ? "el-GR" : "en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(new Date(iso));
 
   // ── LocalBusiness structured data (rich results: rating, hours, address) ──
   const SCHEMA_DAYS = [
@@ -605,45 +600,6 @@ export default async function PublicBusinessPage({
           </div>
         </div>
 
-        {mapEmbedSrc && (
-          <section className="border-t border-border py-12">
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-              <div>
-                <h2 className="font-display text-2xl font-bold text-foreground">
-                  {t.locationTitle}
-                </h2>
-                {addressLine && (
-                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted">
-                    <MapPin className="size-4 text-gold" />
-                    {addressLine}
-                  </p>
-                )}
-              </div>
-              {mapsLink && (
-                <a
-                  href={mapsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-gold-soft"
-                >
-                  <MapPin className="size-4 text-gold" />
-                  {t.openInMaps}
-                </a>
-              )}
-            </div>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-border elev-card">
-              <iframe
-                title={t.locationTitle}
-                src={mapEmbedSrc}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-                className="block h-[340px] w-full border-0 sm:h-[400px]"
-              />
-            </div>
-          </section>
-        )}
-
         {showReviews && reviewCount > 0 && (
           <section id="reviews" className="scroll-mt-20 border-t border-border py-12">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -692,45 +648,61 @@ export default async function PublicBusinessPage({
               </div>
             )}
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {reviews.map((rv, i) => (
-                <div
-                  key={rv.id}
-                  style={{ animationDelay: `${Math.min(i, 12) * 45}ms` }}
-                  className="animate-rise rounded-2xl border border-border bg-surface p-5 elev-card transition-[transform,box-shadow] duration-300 ease-[var(--ease-out)] hover:-translate-y-0.5 hover:[box-shadow:var(--shadow-card-hover)]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <Stars rating={rv.rating} />
-                    <span className="text-xs text-muted">
-                      {fmtReviewDate(rv.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    {rv.customer_name ?? t.anonymous}
-                    {rv.staff_name && (
-                      <span className="font-normal text-muted">
-                        {" · "}
-                        {rv.staff_name}
-                      </span>
-                    )}
+            <ReviewsGrid
+              reviews={reviews.map((rv) => ({
+                id: rv.id,
+                rating: Number(rv.rating),
+                created_at: rv.created_at,
+                customer_name: rv.customer_name,
+                staff_name: rv.staff_name,
+                comment: rv.comment,
+                business_reply: rv.business_reply,
+              }))}
+              locale={locale}
+              labels={{
+                anonymous: t.anonymous,
+                businessReply: t.businessReply,
+                showMore: t.showMoreReviews,
+              }}
+            />
+          </section>
+        )}
+
+        {mapEmbedSrc && (
+          <section className="border-t border-border py-12">
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+              <div>
+                <h2 className="font-display text-2xl font-bold text-foreground">
+                  {t.locationTitle}
+                </h2>
+                {addressLine && (
+                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted">
+                    <MapPin className="size-4 text-gold" />
+                    {addressLine}
                   </p>
-                  {rv.comment && (
-                    <p className="mt-1 text-sm text-foreground/90">
-                      {rv.comment}
-                    </p>
-                  )}
-                  {rv.business_reply && (
-                    <div className="mt-3 rounded-lg border-l-2 border-gold bg-surface-2/50 px-3 py-2">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-gold">
-                        {t.businessReply}
-                      </p>
-                      <p className="mt-0.5 text-sm text-foreground/90">
-                        {rv.business_reply}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
+                )}
+              </div>
+              {mapsLink && (
+                <a
+                  href={mapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-gold-soft"
+                >
+                  <MapPin className="size-4 text-gold" />
+                  {t.openInMaps}
+                </a>
+              )}
+            </div>
+            <div className="mt-5 overflow-hidden rounded-2xl border border-border elev-card">
+              <iframe
+                title={t.locationTitle}
+                src={mapEmbedSrc}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                className="block h-[340px] w-full border-0 sm:h-[400px]"
+              />
             </div>
           </section>
         )}

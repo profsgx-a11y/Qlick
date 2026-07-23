@@ -641,6 +641,7 @@
     "locationTitle": "Location",
     "openInMaps": "Open in Maps",
     "reviewsTitle": "Reviews",
+    "showMoreReviews": "Show more ({n})",
     "anonymous": "Anonymous",
     "businessReply": "Business reply",
     "days": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
