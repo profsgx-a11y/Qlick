@@ -80,7 +80,7 @@ export default async function PublicBusinessPage({
   const { data: business } = await supabase
     .from("businesses")
     .select(
-      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, bookings_paused",
+      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, bookings_paused, timezone",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -238,6 +238,15 @@ export default async function PublicBusinessPage({
   const reviewAvg = reviewCount
     ? reviews.reduce((s, r) => s + Number(r.rating), 0) / reviewCount
     : 0;
+
+  // "Open now / closed · opens Mon 09:00" chip next to the rating.
+  const openInfo = openStatusNow(
+    hours ?? [],
+    business.timezone || "Europe/Athens",
+    new Date(),
+    t.days,
+    { opensAt: t.opensAt, closesAt: t.closesAt },
+  );
   const staffById = new Map(
     (staffRows ?? []).map((s) => [s.id, s] as const),
   );
@@ -422,28 +431,39 @@ export default async function PublicBusinessPage({
                 )}
               </div>
 
-              {/* primary action + social proof */}
-              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
-                {!bookingsPaused && (
-                  <BookingModal
-                    {...bookingModalProps}
-                    triggerLabel={t.book}
-                    triggerClassName="inline-flex h-12 items-center gap-2 rounded-full bg-gold px-7 text-base font-semibold text-black shadow-[0_8px_24px_-8px_var(--gold-glow)] transition-[transform,background-color] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright active:scale-[0.97]"
-                  />
-                )}
-                {showReviews && reviewCount > 0 && (
-                  <a
-                    href="#reviews"
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-4 py-2 backdrop-blur-sm transition-colors duration-200 hover:border-gold-soft"
-                  >
-                    <Stars rating={reviewAvg} />
-                    <span className="text-sm font-semibold text-foreground">
-                      {reviewAvg.toFixed(1)}
+              {/* rating + open status (Google-style social proof row) */}
+              {((showReviews && reviewCount > 0) || openInfo) && (
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  {showReviews && reviewCount > 0 && (
+                    <a
+                      href="#reviews"
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-4 py-2 backdrop-blur-sm transition-colors duration-200 hover:border-gold-soft"
+                    >
+                      <Stars rating={reviewAvg} />
+                      <span className="text-sm font-semibold text-foreground">
+                        {reviewAvg.toFixed(1)}
+                      </span>
+                      <span className="text-sm text-muted">({reviewCount})</span>
+                    </a>
+                  )}
+                  {openInfo && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface/80 px-4 py-2 text-sm backdrop-blur-sm">
+                      <span
+                        className={
+                          openInfo.open
+                            ? "font-semibold text-success"
+                            : "font-semibold text-danger"
+                        }
+                      >
+                        {openInfo.open ? t.openNow : t.closedNow}
+                      </span>
+                      {openInfo.label && (
+                        <span className="text-muted">· {openInfo.label}</span>
+                      )}
                     </span>
-                    <span className="text-sm text-muted">({reviewCount})</span>
-                  </a>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               </div>
             </div>
           </div>
@@ -660,6 +680,85 @@ export default async function PublicBusinessPage({
       </Container>
     </div>
   );
+}
+
+interface HourRow {
+  day_of_week: number;
+  is_closed: boolean;
+  open_time: string | null;
+  close_time: string | null;
+}
+
+/**
+ * "Open now / Closed · opens Mon 09:00" from the weekly hours. Uses the
+ * business timezone so it's correct for visitors abroad. Overnight shifts
+ * (close ≤ open) and special closures are out of scope here — this mirrors
+ * the weekly-hours sidebar. Returns null when no hours are set.
+ */
+function openStatusNow(
+  hours: HourRow[],
+  tz: string,
+  now: Date,
+  dayNames: string[],
+  labels: { opensAt: string; closesAt: string },
+): { open: boolean; label: string } | null {
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const fmt = (min: number) =>
+    `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+  const shifts = hours
+    .filter((r) => !r.is_closed && r.open_time && r.close_time)
+    .map((r) => ({
+      dow: r.day_of_week,
+      open: toMin(r.open_time as string),
+      close: toMin(r.close_time as string),
+    }))
+    .filter((s) => s.close > s.open);
+  if (shifts.length === 0) return null;
+
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour12: false,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(now);
+  const map: Record<string, string> = {};
+  for (const p of parts) if (p.type !== "literal") map[p.type] = p.value;
+  const dow =
+    ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>)[
+      map.weekday
+    ] ?? 0;
+  const nowMin = (Number(map.hour) % 24) * 60 + Number(map.minute);
+
+  const openShift = shifts.find(
+    (s) => s.dow === dow && nowMin >= s.open && nowMin < s.close,
+  );
+  if (openShift) {
+    return { open: true, label: labels.closesAt.replace("{time}", fmt(openShift.close)) };
+  }
+
+  const laterToday = shifts
+    .filter((s) => s.dow === dow && s.open > nowMin)
+    .sort((a, b) => a.open - b.open)[0];
+  if (laterToday) {
+    return { open: false, label: labels.opensAt.replace("{time}", fmt(laterToday.open)) };
+  }
+
+  for (let i = 1; i <= 7; i++) {
+    const d = (dow + i) % 7;
+    const next = shifts.filter((s) => s.dow === d).sort((a, b) => a.open - b.open)[0];
+    if (next) {
+      return {
+        open: false,
+        label: labels.opensAt.replace("{time}", `${dayNames[d]} ${fmt(next.open)}`),
+      };
+    }
+  }
+  return { open: false, label: "" };
 }
 
 function Stars({ rating }: { rating: number }) {
