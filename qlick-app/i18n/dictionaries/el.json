@@ -638,6 +638,8 @@
     "opensAt": "ανοίγει {time}",
     "closesAt": "κλείνει {time}",
     "close": "Κλείσιμο",
+    "locationTitle": "Τοποθεσία",
+    "openInMaps": "Άνοιγμα στους Χάρτες",
     "reviewsTitle": "Κριτικές",
     "anonymous": "Ανώνυμος",
     "businessReply": "Απάντηση καταστήματος",

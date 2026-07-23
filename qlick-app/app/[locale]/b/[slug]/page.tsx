@@ -80,7 +80,7 @@ export default async function PublicBusinessPage({
   const { data: business } = await supabase
     .from("businesses")
     .select(
-      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, bookings_paused, timezone",
+      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, bookings_paused, timezone, google_place_id",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -203,6 +203,24 @@ export default async function PublicBusinessPage({
   const addressLine = [address.street, address.city, address.postcode]
     .filter(Boolean)
     .join(", ");
+
+  // Google Map (no API key — the classic ?output=embed iframe). Prefer exact
+  // coordinates, fall back to the address text; hide the map when we have
+  // neither.
+  const mapQuery =
+    address.lat != null && address.lng != null
+      ? `${address.lat},${address.lng}`
+      : addressLine || null;
+  const mapEmbedSrc = mapQuery
+    ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}&z=16&output=embed`
+    : null;
+  const mapsLink = mapQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}${
+        business.google_place_id
+          ? `&query_place_id=${business.google_place_id}`
+          : ""
+      }`
+    : null;
 
   // Order hours by the business's saved day order (fallback Mon..Sun)
   const orderedDays = (
@@ -586,6 +604,45 @@ export default async function PublicBusinessPage({
             </div>
           </div>
         </div>
+
+        {mapEmbedSrc && (
+          <section className="border-t border-border py-12">
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+              <div>
+                <h2 className="font-display text-2xl font-bold text-foreground">
+                  {t.locationTitle}
+                </h2>
+                {addressLine && (
+                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted">
+                    <MapPin className="size-4 text-gold" />
+                    {addressLine}
+                  </p>
+                )}
+              </div>
+              {mapsLink && (
+                <a
+                  href={mapsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-gold-soft"
+                >
+                  <MapPin className="size-4 text-gold" />
+                  {t.openInMaps}
+                </a>
+              )}
+            </div>
+            <div className="mt-5 overflow-hidden rounded-2xl border border-border elev-card">
+              <iframe
+                title={t.locationTitle}
+                src={mapEmbedSrc}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+                className="block h-[340px] w-full border-0 sm:h-[400px]"
+              />
+            </div>
+          </section>
+        )}
 
         {showReviews && reviewCount > 0 && (
           <section id="reviews" className="scroll-mt-20 border-t border-border py-12">

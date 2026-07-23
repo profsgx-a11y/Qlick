@@ -638,6 +638,8 @@
     "opensAt": "opens {time}",
     "closesAt": "closes {time}",
     "close": "Close",
+    "locationTitle": "Location",
+    "openInMaps": "Open in Maps",
     "reviewsTitle": "Reviews",
     "anonymous": "Anonymous",
     "businessReply": "Business reply",
