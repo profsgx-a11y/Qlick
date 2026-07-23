@@ -72,7 +72,8 @@ export default async function PrivacyPage({
           heading: "Χάρτες (Google Maps & OpenStreetMap)",
           body: [
             "Στη δημόσια σελίδα κάθε καταστήματος ενσωματώνουμε χάρτη της Google (Google Maps), ώστε να βλέπεις πού βρίσκεται. Μόλις φορτώσει ο χάρτης, η Google λαμβάνει τη διεύθυνση IP σου και ενδέχεται να χρησιμοποιήσει cookies. Η Google ενεργεί ως ανεξάρτητος υπεύθυνος επεξεργασίας, βάσει της δικής της πολιτικής απορρήτου — εμείς δεν της αποστέλλουμε τα προσωπικά σου στοιχεία ούτε τα ραντεβού σου.",
-            "Στο περιβάλλον διαχείρισης, για την αναζήτηση διεύθυνσης και τον χάρτη ορισμού τοποθεσίας χρησιμοποιούμε OpenStreetMap (υπηρεσία Nominatim) και πλακίδια χάρτη CARTO. Σε αυτές αποστέλλονται μόνο η διεύθυνση ή οι συντεταγμένες που αναζητά ο ιδιοκτήτης, μαζί με τη διεύθυνση IP του.",
+            "Στο περιβάλλον διαχείρισης, για τη μετατροπή διεύθυνσης σε συντεταγμένες (και το αντίστροφο) χρησιμοποιούμε την υπηρεσία OpenStreetMap (Nominatim). Το ερώτημα αποστέλλεται από τους δικούς μας διακομιστές και όχι από τον browser σου — επομένως η OpenStreetMap λαμβάνει μόνο τη διεύθυνση ή τις συντεταγμένες που αναζητείς, ΟΧΙ τη διεύθυνση IP σου.",
+            "Ο χάρτης ορισμού τοποθεσίας φορτώνει πλακίδια εικόνας από τη CARTO απευθείας στον browser σου. Η CARTO λαμβάνει τη διεύθυνση IP σου και ποιο τμήμα του χάρτη προβάλλεις, αλλά όχι τη διεύθυνση που πληκτρολογείς.",
             "Οι χάρτες φορτώνουν μόνο στις σελίδες όπου εμφανίζονται και δεν χρησιμοποιούνται για παρακολούθηση ή διαφήμιση.",
           ],
         },
@@ -147,7 +148,8 @@ export default async function PrivacyPage({
           heading: "Maps (Google Maps & OpenStreetMap)",
           body: [
             "Each public shop page embeds a Google Map so you can see where the business is. Once the map loads, Google receives your IP address and may use cookies. Google acts as an independent controller under its own privacy policy — we do not send it your personal details or your appointments.",
-            "Inside the dashboard, address search and the location picker use OpenStreetMap (the Nominatim service) and CARTO map tiles. Only the address or coordinates the owner is looking up is sent to them, together with the owner's IP address.",
+            "Inside the dashboard, we use the OpenStreetMap Nominatim service to turn an address into coordinates and back. The query is sent from our own servers, not from your browser — so OpenStreetMap only receives the address or coordinates being looked up, NOT your IP address.",
+            "The location picker loads map tile images from CARTO directly in your browser. CARTO receives your IP address and which part of the map you are viewing, but not the address you type.",
             "Maps load only on the pages where they appear and are never used for tracking or advertising.",
           ],
         },
