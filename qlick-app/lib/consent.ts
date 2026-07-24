@@ -9,6 +9,7 @@ export type Consent = "all" | "essential";
 
 const KEY = "qlick:cookie-consent";
 export const CONSENT_EVENT = "qlick:consent-change";
+export const REOPEN_EVENT = "qlick:consent-reopen";
 
 export function getConsent(): Consent | null {
   if (typeof window === "undefined") return null;
@@ -33,4 +34,14 @@ export function onConsentChange(cb: (c: Consent) => void): () => void {
   const handler = (e: Event) => cb((e as CustomEvent).detail as Consent);
   window.addEventListener(CONSENT_EVENT, handler);
   return () => window.removeEventListener(CONSENT_EVENT, handler);
+}
+
+/** Re-open the consent bar so the visitor can change their choice. */
+export function reopenConsent(): void {
+  window.dispatchEvent(new CustomEvent(REOPEN_EVENT));
+}
+
+export function onConsentReopen(cb: () => void): () => void {
+  window.addEventListener(REOPEN_EVENT, cb);
+  return () => window.removeEventListener(REOPEN_EVENT, cb);
 }

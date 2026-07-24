@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Logo } from "@/components/brand/logo";
+import { CookieSettingsLink } from "@/components/ui/cookie-settings-link";
 import type { Locale, Dictionary } from "@/i18n/config";
 
 interface FooterProps {
@@ -69,8 +70,10 @@ export function Footer({ locale, dict }: FooterProps) {
             ))}
           </div>
         </div>
-        <div className="mt-12 border-t border-border pt-6 text-xs text-muted-2">
-          {dict.footer.copyright.replace("{year}", String(year))}
+        <div className="mt-12 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-6 text-xs text-muted-2">
+          <span>{dict.footer.copyright.replace("{year}", String(year))}</span>
+          <span aria-hidden>·</span>
+          <CookieSettingsLink label={dict.footer.links.cookieSettings} />
         </div>
 
         {/* Oversized wordmark — brand sign-off at the very bottom */}

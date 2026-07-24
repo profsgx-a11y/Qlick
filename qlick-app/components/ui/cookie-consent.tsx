@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Cookie } from "lucide-react";
 import { useDict } from "@/i18n/provider";
-import { getConsent, setConsent, onConsentChange } from "@/lib/consent";
+import {
+  getConsent,
+  setConsent,
+  onConsentChange,
+  onConsentReopen,
+} from "@/lib/consent";
 
 /**
  * Bottom cookie-consent bar. Shown until the visitor makes a choice; the
@@ -18,9 +23,14 @@ export function CookieConsent({ locale }: { locale: string }) {
   useEffect(() => {
     // Only after mount — avoids an SSR/hydration flash and reads localStorage.
     if (getConsent() === null) setShow(true);
-    // If the choice is made elsewhere (e.g. the map's "Show map" button),
-    // dismiss the bar too.
-    return onConsentChange(() => setShow(false));
+    // Dismiss when the choice is made elsewhere (e.g. the map's "Show map"),
+    // and re-open from the footer's "Cookie settings" link.
+    const off1 = onConsentChange(() => setShow(false));
+    const off2 = onConsentReopen(() => setShow(true));
+    return () => {
+      off1();
+      off2();
+    };
   }, []);
 
   if (!show) return null;
@@ -37,7 +47,7 @@ export function CookieConsent({ locale }: { locale: string }) {
         <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted">
           {t.text}{" "}
           <Link
-            href={`/${locale}/privacy`}
+            href={`/${locale}/cookies`}
             className="text-gold underline underline-offset-2 hover:text-gold-bright"
           >
             {t.more}

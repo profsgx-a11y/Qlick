@@ -626,7 +626,8 @@
       "contact": "Contact",
       "terms": "Terms of Service",
       "privacy": "Privacy",
-      "cookies": "Cookies"
+      "cookies": "Cookies",
+      "cookieSettings": "Cookie settings"
     },
     "copyright": "© {year} Qlick. All rights reserved."
   },
