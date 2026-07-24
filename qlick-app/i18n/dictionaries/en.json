@@ -368,6 +368,12 @@
     "title": "Qlick — The fastest way to book an appointment",
     "description": "Fast booking and easy appointment management, for businesses and customers."
   },
+  "cookie": {
+    "text": "We use essential cookies to run Qlick. \"Accept all\" also allows the embedded Google Map on shop pages.",
+    "more": "Learn more",
+    "essential": "Essential only",
+    "acceptAll": "Accept all"
+  },
   "nav": {
     "features": "What we offer",
     "pricing": "Pricing",
@@ -640,6 +646,8 @@
     "close": "Close",
     "locationTitle": "Location",
     "openInMaps": "Open in Maps",
+    "mapConsentPrompt": "The map loads from Google and may set cookies. Tap to show it.",
+    "mapConsentLoad": "Show map",
     "reviewsTitle": "Reviews",
     "showMoreReviews": "Show more ({n})",
     "anonymous": "Anonymous",

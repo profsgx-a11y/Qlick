@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import "../globals.css";
 import { getDictionary, hasLocale, locales } from "@/i18n/config";
 import { DictProvider } from "@/i18n/provider";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 
 type LocaleParams = { params: Promise<{ locale: string }> };
 
@@ -82,7 +83,10 @@ export default async function LocaleLayout({
       className={`${inter.variable} ${sofiaSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <DictProvider dict={dict}>{children}</DictProvider>
+        <DictProvider dict={dict}>
+          {children}
+          <CookieConsent locale={locale} />
+        </DictProvider>
       </body>
     </html>
   );

@@ -12,6 +12,7 @@ import { Container } from "@/components/ui/container";
 import { JsonLd } from "@/components/seo/json-ld";
 import { FavoriteButton } from "@/components/account/favorite-button";
 import { BookingModal } from "@/components/booking/booking-modal";
+import { ShopMap } from "@/components/business/shop-map";
 import { ReviewsGrid } from "@/components/business/reviews-grid";
 import { createClient } from "@/lib/supabase/server";
 import { hasLocale, getDictionary } from "@/i18n/config";
@@ -669,42 +670,17 @@ export default async function PublicBusinessPage({
         )}
 
         {mapEmbedSrc && (
-          <section className="border-t border-border py-12">
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-              <div>
-                <h2 className="font-display text-2xl font-bold text-foreground">
-                  {t.locationTitle}
-                </h2>
-                {addressLine && (
-                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted">
-                    <MapPin className="size-4 text-gold" />
-                    {addressLine}
-                  </p>
-                )}
-              </div>
-              {mapsLink && (
-                <a
-                  href={mapsLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-gold-soft"
-                >
-                  <MapPin className="size-4 text-gold" />
-                  {t.openInMaps}
-                </a>
-              )}
-            </div>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-border elev-card">
-              <iframe
-                title={t.locationTitle}
-                src={mapEmbedSrc}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-                className="block h-[340px] w-full border-0 sm:h-[400px]"
-              />
-            </div>
-          </section>
+          <ShopMap
+            embedSrc={mapEmbedSrc}
+            mapsLink={mapsLink}
+            addressLine={addressLine}
+            labels={{
+              title: t.locationTitle,
+              openInMaps: t.openInMaps,
+              consentPrompt: t.mapConsentPrompt,
+              consentLoad: t.mapConsentLoad,
+            }}
+          />
         )}
       </Container>
     </div>
