@@ -69,6 +69,14 @@ export default async function PrivacyPage({
           ],
         },
         {
+          heading: "Cookies",
+          body: [
+            "Χρησιμοποιούμε απαραίτητα (essential) cookies για να λειτουργεί το Qlick — κυρίως για να παραμένεις συνδεδεμένος (σύνοδος & ταυτοποίηση μέσω Supabase) και για την ασφάλεια. Αυτά δεν απαιτούν συγκατάθεση, γιατί χωρίς αυτά η υπηρεσία δεν λειτουργεί.",
+            "Το μόνο μη-απαραίτητο στοιχείο τρίτου είναι ο ενσωματωμένος χάρτης Google στις σελίδες καταστημάτων, που μπορεί να ορίσει cookies. Δεν φορτώνεται παρά μόνο αν επιλέξεις «Αποδοχή όλων» στο μπάνερ συγκατάθεσης (ή πατήσεις «Εμφάνιση χάρτη»). Αν επιλέξεις «Μόνο απαραίτητα», ο χάρτης δεν φορτώνει.",
+            "Δεν χρησιμοποιούμε cookies διαφήμισης, analytics ή παρακολούθησης. Μπορείς να αλλάξεις την επιλογή σου οποιαδήποτε στιγμή διαγράφοντας τα δεδομένα του ιστότοπου από τον browser σου, ώστε να ξαναεμφανιστεί το μπάνερ.",
+          ],
+        },
+        {
           heading: "Χάρτες (Google Maps & OpenStreetMap)",
           body: [
             "Στη δημόσια σελίδα κάθε καταστήματος ενσωματώνουμε χάρτη της Google (Google Maps), ώστε να βλέπεις πού βρίσκεται. Μόλις φορτώσει ο χάρτης, η Google λαμβάνει τη διεύθυνση IP σου και ενδέχεται να χρησιμοποιήσει cookies. Η Google ενεργεί ως ανεξάρτητος υπεύθυνος επεξεργασίας, βάσει της δικής της πολιτικής απορρήτου — εμείς δεν της αποστέλλουμε τα προσωπικά σου στοιχεία ούτε τα ραντεβού σου.",
@@ -142,6 +150,14 @@ export default async function PrivacyPage({
             "We do not sell, rent or disclose personal data or Google user data to third parties for advertising or commercial purposes.",
             "Google user data is not transferred to any third party, with the sole exception of the infrastructure providers that act as data processors on our behalf, exclusively to operate the service: Supabase (database and authentication, servers in the EU — Frankfurt), Vercel (application hosting) and Resend (sending service emails, e.g. appointment confirmations).",
             "These providers are contractually bound to process the data only on our instructions and may not use it for their own purposes. We do not share data with advertisers, data brokers, or for training AI models. We may disclose data only where required by law or a competent authority.",
+          ],
+        },
+        {
+          heading: "Cookies",
+          body: [
+            "We use essential cookies to run Qlick — mainly to keep you signed in (session & authentication via Supabase) and for security. These do not require consent, because the service cannot work without them.",
+            "The only non-essential third-party item is the embedded Google Map on shop pages, which may set cookies. It does not load unless you choose \"Accept all\" in the consent banner (or press \"Show map\"). If you choose \"Essential only\", the map does not load.",
+            "We do not use advertising, analytics or tracking cookies. You can change your choice at any time by clearing this site's data in your browser, which brings the banner back.",
           ],
         },
         {
