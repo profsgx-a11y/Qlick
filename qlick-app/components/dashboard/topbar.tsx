@@ -26,7 +26,7 @@ export function Topbar({
   const t = useDict().dashboard;
   const { setOpen } = useMobileNav();
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/70 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 lg:px-8">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/70 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 lg:px-8 short:py-2">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           onClick={() => setOpen(true)}
@@ -40,7 +40,9 @@ export function Topbar({
             {title}
           </h1>
           {subtitle && (
-            <p className="mt-0.5 truncate text-sm text-muted">{subtitle}</p>
+            <p className="mt-0.5 truncate text-sm text-muted short:hidden">
+              {subtitle}
+            </p>
           )}
         </div>
       </div>

@@ -1206,10 +1206,12 @@ export function CalendarClient({
       {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
           Single-row grid only on xl — the three groups need ~750px of content
           width; below that (tablets, landscape phones) they stack centered,
-          otherwise the fixed-width date navigator overlaps its neighbours. */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3">
+          otherwise the fixed-width date navigator overlaps its neighbours.
+          On `short` (height-starved, e.g. landscape phones — wide!) they go
+          back on one wrapping row so the calendar keeps the screen height. */}
+      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3 short:flex-row short:flex-wrap short:items-center short:justify-between short:py-2">
         {/* View switcher (Week / Month) with a sliding gold indicator */}
-        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0">
+        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0 short:mx-0">
           <span
             aria-hidden
             className="absolute inset-y-1 left-1 rounded-lg bg-gold/15 ring-1 ring-inset ring-gold/25 transition-transform duration-300 ease-[var(--ease-out)]"
@@ -1327,7 +1329,7 @@ export function CalendarClient({
       </div>
 
       {/* Secondary bar: guide toggle + pause-online-bookings toggle */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6 short:py-1.5">
         <button
           onClick={() => setHelpOpen((v) => !v)}
           className={cn(
@@ -1420,7 +1422,7 @@ export function CalendarClient({
       {/* Grid area — wrapper clips the slide-in so it never spills a scrollbar */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {isMonth ? (
-        <div className="animate-view flex-1 overflow-auto p-4">
+        <div className="animate-view flex-1 overflow-auto p-4 short:p-2">
           <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-border">
             {days.slice(0, 7).map((d) => (
               <div
@@ -1508,7 +1510,7 @@ export function CalendarClient({
           </div>
         </div>
       ) : (
-        <div className="animate-view m-4 flex min-h-0 min-w-0 flex-1 items-start">
+        <div className="animate-view m-4 flex min-h-0 min-w-0 flex-1 items-start short:m-2">
           {/* Fixed card frame (border + corners stay) with the schedule scrolling inside it */}
           <div className="flex max-h-full max-w-full overflow-clip rounded-b-2xl">
             <div className="overflow-auto">
