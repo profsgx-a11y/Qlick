@@ -1198,13 +1198,14 @@ export function CalendarClient({
         fullscreen && "fixed inset-0 z-40 bg-dashboard",
       )}
     >
-      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + full view].
+      {/* Toolbar: [view switcher] · [◀ date ▶] · [staff filter] + full view.
           Exactly two shapes, never a half-wrapped one: on `wide` a single
           no-wrap row (the outer groups flex-1 so the date navigator sits dead
           centre), below it neat centered rows stacked vertically. Anything in
           between — letting the groups wrap onto a second line — reads as
-          scattered, so `flex-nowrap` forbids it. */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 wide:flex-row wide:flex-nowrap wide:items-center wide:gap-3 short:py-2">
+          scattered, so `flex-nowrap` forbids it. `relative` anchors the
+          full-view button to the top-right corner while stacked. */}
+      <div className="relative flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 wide:flex-row wide:flex-nowrap wide:items-center wide:gap-3 short:py-2">
         {/* View switcher (Week / Month) with a sliding gold indicator.
             Stays `w-fit` on every size — the indicator is sized as 50% of this
             box, so letting it flex would detach it from the two w-24 links. */}
@@ -1307,9 +1308,10 @@ export function CalendarClient({
           )}
         </div>
 
-        {/* Staff filter (week) + full-view toggle */}
-        <div className="flex shrink-0 items-center justify-center gap-2 wide:justify-end">
-          {isWeek && staff.length > 0 && (
+        {/* Staff filter (week only) — its own centered row when stacked, on the
+            right when `wide`. Omitted entirely otherwise, so no empty row. */}
+        {isWeek && staff.length > 0 && (
+          <div className="flex shrink-0 justify-center wide:justify-end">
             <SelectMenu
               value={staffFilter}
               onChange={setStaffFilter}
@@ -1321,26 +1323,30 @@ export function CalendarClient({
                 ...staff.map((s) => ({ value: s.id, label: s.name })),
               ]}
             />
+          </div>
+        )}
+
+        {/* Full-view toggle. Pinned to the top-right corner while the toolbar
+            is stacked (matching the px/py padding), so it never joins the
+            centered stack; on `wide` it flows back inline at the far right. */}
+        <button
+          type="button"
+          onClick={() => setFullscreen((v) => !v)}
+          aria-label={fullscreen ? t.exitFullView : t.fullView}
+          title={fullscreen ? t.exitFullView : t.fullView}
+          className={cn(
+            "absolute right-4 top-3 grid size-9 shrink-0 place-items-center rounded-xl border transition-colors duration-200 ease-[var(--ease-out)] active:scale-95 sm:right-6 short:top-2 wide:static wide:right-auto wide:top-auto",
+            fullscreen
+              ? "border-gold/40 bg-gold/10 text-gold"
+              : "border-border text-muted hover:border-gold/40 hover:text-gold",
           )}
-          <button
-            type="button"
-            onClick={() => setFullscreen((v) => !v)}
-            aria-label={fullscreen ? t.exitFullView : t.fullView}
-            title={fullscreen ? t.exitFullView : t.fullView}
-            className={cn(
-              "grid size-9 shrink-0 place-items-center rounded-xl border transition-colors duration-200 ease-[var(--ease-out)] active:scale-95",
-              fullscreen
-                ? "border-gold/40 bg-gold/10 text-gold"
-                : "border-border text-muted hover:border-gold/40 hover:text-gold",
-            )}
-          >
-            {fullscreen ? (
-              <Minimize2 className="size-4" />
-            ) : (
-              <Maximize2 className="size-4" />
-            )}
-          </button>
-        </div>
+        >
+          {fullscreen ? (
+            <Minimize2 className="size-4" />
+          ) : (
+            <Maximize2 className="size-4" />
+          )}
+        </button>
       </div>
 
       {/* Secondary bar: guide toggle + closures.
