@@ -30,7 +30,7 @@ export function Topbar({
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button
           onClick={() => setOpen(true)}
-          className="-ml-1 shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground md:hidden"
+          className="-ml-1 shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground desk:hidden"
           aria-label={t.openMenu}
         >
           <Menu className="size-5" />

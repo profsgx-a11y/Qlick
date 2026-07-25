@@ -1154,7 +1154,7 @@ export function CalendarClient({
                       body,
                     };
                   }}
-                  className="absolute inset-x-0 bottom-0 z-10 hidden h-2.5 cursor-ns-resize items-end justify-center md:flex"
+                  className="absolute inset-x-0 bottom-0 z-10 hidden h-2.5 cursor-ns-resize items-end justify-center desk:flex"
                   title={t.dragResize}
                 >
                   <span className="mb-0.5 h-0.5 w-5 rounded-full bg-foreground/40" />
@@ -1203,10 +1203,13 @@ export function CalendarClient({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker] */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 md:grid md:grid-cols-3 md:items-center md:gap-3">
+      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
+          Single-row grid only on xl — the three groups need ~750px of content
+          width; below that (tablets, landscape phones) they stack centered,
+          otherwise the fixed-width date navigator overlaps its neighbours. */}
+      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3">
         {/* View switcher (Week / Month) with a sliding gold indicator */}
-        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium md:mx-0">
+        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0">
           <span
             aria-hidden
             className="absolute inset-y-1 left-1 rounded-lg bg-gold/15 ring-1 ring-inset ring-gold/25 transition-transform duration-300 ease-[var(--ease-out)]"
@@ -1294,7 +1297,7 @@ export function CalendarClient({
         </div>
 
         {/* Staff filter (week) + date picker */}
-        <div className="flex items-center justify-center gap-2 justify-self-end md:justify-end">
+        <div className="flex items-center justify-center gap-2 justify-self-end xl:justify-end">
           {isWeek && staff.length > 0 && (
             <SelectMenu
               value={staffFilter}
@@ -1827,7 +1830,7 @@ export function CalendarClient({
                 className="fixed inset-0 z-40 bg-black/50"
                 onClick={() => !isPending && setNewSlot(null)}
               />
-              <div className="fixed left-1/2 top-1/2 z-50 w-[400px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+              <div className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[400px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl">
                 <div className="mb-3 flex items-start justify-between">
                   <div>
                     <h3 className="font-display text-base font-bold text-foreground">
@@ -2049,7 +2052,7 @@ export function CalendarClient({
                 className="fixed inset-0 z-40 bg-black/50"
                 onClick={() => !isPending && setPendingMove(null)}
               />
-              <div className="fixed left-1/2 top-1/2 z-50 w-[360px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+              <div className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[360px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl">
                 <h3 className="font-display text-base font-bold text-foreground">
                   {t.moveBooking}
                 </h3>
