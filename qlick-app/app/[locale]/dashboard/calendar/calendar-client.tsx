@@ -76,7 +76,11 @@ import {
 const RESIZE_SNAP_MIN = 5;
 const MIN_DURATION_MIN = 15;
 const STAFF_COL_WIDTH = 248;
-const RAIL_WIDTH = 56;
+// Hour rail: the labels are always "HH:MM" (minLabel is 24h and locale-proof)
+// in tabular-nums, so they measure a fixed ~30.4px. 8px of breathing room on
+// each side — matching the `right-2` gap to the grid — is all the rail needs;
+// anything wider is dead space stolen from the columns.
+const RAIL_WIDTH = 47;
 const HEAD_HEIGHT = 56; // single header (day view)
 const WEEK_DAY_HEAD = 30; // day band height (week)
 const WEEK_SUB_HEAD = 46; // staff sub-header height (week)
