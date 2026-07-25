@@ -1651,6 +1651,8 @@
       "viewDay": "Day",
       "viewWeek": "Week",
       "viewMonth": "Month",
+      "fullView": "Full view",
+      "exitFullView": "Exit full view",
       "prev": "Previous",
       "next": "Next",
       "backToday": "Back to today",

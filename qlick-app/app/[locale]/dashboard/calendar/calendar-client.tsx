@@ -35,6 +35,8 @@ import {
   Play,
   ShieldCheck,
   StickyNote,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
@@ -244,6 +246,12 @@ export function CalendarClient({
       }
     });
   };
+
+  // Full-view mode: the whole calendar (toolbar + grid) becomes a fixed
+  // overlay covering the dashboard chrome (sidebar/topbar), so the schedule
+  // gets the entire screen — the main way to work on landscape phones.
+  // z-40: above the shell, below toasts/modals (z-50+).
+  const [fullscreen, setFullscreen] = useState(false);
 
   // Help panel + temporary pause of online bookings.
   const [helpOpen, setHelpOpen] = useState(false);
@@ -1202,7 +1210,12 @@ export function CalendarClient({
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 flex-col",
+        fullscreen && "fixed inset-0 z-40 bg-dashboard",
+      )}
+    >
       {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
           Single-row grid only on xl — the three groups need ~750px of content
           width; below that (tablets, landscape phones) they stack centered,
@@ -1325,10 +1338,30 @@ export function CalendarClient({
               router.push(`${base}?date=${d}${viewSuffix}`);
             }}
           />
+          <button
+            type="button"
+            onClick={() => setFullscreen((v) => !v)}
+            aria-label={fullscreen ? t.exitFullView : t.fullView}
+            title={fullscreen ? t.exitFullView : t.fullView}
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-xl border transition-colors duration-200 ease-[var(--ease-out)] active:scale-95",
+              fullscreen
+                ? "border-gold/40 bg-gold/10 text-gold"
+                : "border-border text-muted hover:border-gold/40 hover:text-gold",
+            )}
+          >
+            {fullscreen ? (
+              <Minimize2 className="size-4" />
+            ) : (
+              <Maximize2 className="size-4" />
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Secondary bar: guide toggle + pause-online-bookings toggle */}
+      {/* Secondary bar: guide toggle + pause-online-bookings toggle.
+          Hidden in full view — there the calendar gets every pixel. */}
+      {!fullscreen && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6 short:py-1.5">
         <button
           onClick={() => setHelpOpen((v) => !v)}
@@ -1370,6 +1403,7 @@ export function CalendarClient({
           {t.closureBtn}
         </button>
       </div>
+      )}
 
       {/* Paused banner */}
       {paused && (
@@ -1380,7 +1414,7 @@ export function CalendarClient({
       )}
 
       {/* Guide / instructions panel */}
-      {helpOpen && (
+      {!fullscreen && helpOpen && (
         <div className="border-b border-border bg-surface/40 px-6 py-4 text-sm">
           <div className="grid gap-5 md:grid-cols-2">
             <div>
