@@ -37,11 +37,10 @@ export default async function CalendarPage({
 
   const { data: biz } = await supabase
     .from("businesses")
-    .select("timezone, bookings_paused")
+    .select("timezone")
     .eq("id", business.id)
     .maybeSingle();
   const tz = biz?.timezone || "Europe/Athens";
-  const bookingsPaused = biz?.bookings_paused ?? false;
 
   const sp = await searchParams;
   // "Day" view was removed — Week is the default, Month the only alternative.
@@ -264,7 +263,6 @@ export default async function CalendarPage({
         locale={locale}
         ownerUserId={userId}
         tz={tz}
-        bookingsPaused={bookingsPaused}
         view={view}
         date={date}
         today={todayInZone(tz)}

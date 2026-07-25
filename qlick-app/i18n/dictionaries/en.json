@@ -687,7 +687,7 @@
       {
         "title": "A calendar that works like you do",
         "body": "The whole week at a glance, per staff member, from your phone or computer.",
-        "points": ["Weekly & monthly view", "A column per staff member, color-coded", "Drag appointments to move them", "Pause online bookings with one click"]
+        "points": ["Weekly & monthly view", "A column per staff member, color-coded", "Drag appointments to move them", "Holidays & special hours with one click"]
       },
       {
         "title": "A QR poster with your identity",
@@ -1624,16 +1624,13 @@
       "guideTip1": "Click an empty time cell to add an appointment (name, phone, service).",
       "guideTip2": "On a computer: drag an appointment to change its time/staff, or drag its bottom edge for duration. On mobile: tap it and choose “Move appointment” or “Change duration”.",
       "guideTip3": "Click an appointment to set an outcome (Completed / No-show / Cancel) or report a customer.",
-      "guideTip4": "Switch between Day / Week / Month at the top left and navigate with the arrows.",
+      "guideTip4": "Switch between Week / Month at the top left, navigate with the arrows, and tap the date in the middle to jump to any day.",
       "guideExistingTitle": "Already have appointments?",
-      "guideExisting1": "Tap “Pause online bookings” so no customer books online while you enter them.",
-      "guideExisting2": "Add your existing appointments one by one by clicking their time and filling in name/phone/service.",
-      "guideExisting3": "When you're done, tap “Resume bookings” to start accepting online bookings again.",
+      "guideExisting1": "Add your existing appointments one by one by clicking their time and filling in name/phone/service.",
+      "guideExisting2": "Every slot you fill instantly stops showing as available to customers — no need to close online bookings while you work.",
+      "guideExisting3": "If you're closed for a day or working different hours, tap “Holiday / special hours” and those hours close for online bookings.",
       "guideNoDoubleTitle": "No double bookings",
       "guideNoDouble": "Don't worry — two appointments can never land at the same time for the same staff member. Even under “Unassigned”, if no staff member is free at that moment the booking is refused. This check applies both to online bookings and to ones you add by hand.",
-      "pauseBookings": "Pause online bookings",
-      "resumeBookings": "Resume bookings",
-      "pausedBanner": "Online bookings are temporarily paused. Customers can't book online — you can still add appointments normally.",
       "unassigned": "Unassigned",
       "moveFailed": "Move failed.",
       "somethingWrong": "Something went wrong.",

@@ -31,8 +31,6 @@ import {
   Info,
   Flag,
   HelpCircle,
-  Pause,
-  Play,
   ShieldCheck,
   StickyNote,
   Maximize2,
@@ -48,12 +46,7 @@ import {
 } from "@/components/dashboard/customer-actions-modal";
 import { zonedTimeToUtc } from "@/lib/availability";
 import { updateBookingStatus } from "../bookings/actions";
-import {
-  createWalkin,
-  moveBooking,
-  resizeBooking,
-  setBookingsPaused,
-} from "./actions";
+import { createWalkin, moveBooking, resizeBooking } from "./actions";
 import { saveClosure, deleteClosure } from "../settings/closures-actions";
 import { BookingEditModal } from "./booking-edit-modal";
 import { DatePicker } from "./date-picker";
@@ -136,7 +129,6 @@ interface Props {
   locale: string;
   ownerUserId: string;
   tz: string;
-  bookingsPaused: boolean;
   view: "day" | "week" | "month";
   date: string; // anchor date YYYY-MM-DD
   today: string;
@@ -158,7 +150,6 @@ export function CalendarClient({
   locale,
   ownerUserId,
   tz,
-  bookingsPaused,
   view,
   date,
   today,
@@ -253,22 +244,8 @@ export function CalendarClient({
   // z-40: above the shell, below toasts/modals (z-50+).
   const [fullscreen, setFullscreen] = useState(false);
 
-  // Help panel + temporary pause of online bookings.
+  // Help panel.
   const [helpOpen, setHelpOpen] = useState(false);
-  const [paused, setPaused] = useState(bookingsPaused);
-  useEffect(() => setPaused(bookingsPaused), [bookingsPaused]);
-  const [pausePending, startPauseTransition] = useTransition();
-  const togglePause = () => {
-    const next = !paused;
-    setPaused(next); // optimistic
-    startPauseTransition(async () => {
-      const res = await setBookingsPaused(locale, next);
-      if (!res.ok) {
-        setPaused(!next); // revert on failure
-        alert(dashErr(dd.errors, res.error, t.somethingWrong));
-      }
-    });
-  };
 
   const staffColors = useMemo(() => {
     const m: Record<string, string | null> = {};
@@ -1272,23 +1249,33 @@ export function CalendarClient({
             <ChevronLeft className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:-translate-x-0.5" />
           </Link>
 
-          {onToday ? (
-            <div className="min-w-[210px] overflow-hidden rounded-xl bg-gold/15 px-3 py-1.5 text-center text-sm font-semibold capitalize text-gold ring-1 ring-inset ring-gold/20">
+          {/* The date label IS the picker trigger — one control instead of a
+              separate calendar button somewhere else on the toolbar. Jumping
+              back to today lives inside the popover. */}
+          <DatePicker
+            value={date}
+            today={today}
+            locale={locale}
+            todayLabel={t.backToday}
+            prevLabel={t.prev}
+            nextLabel={t.next}
+            align="center"
+            triggerClassName={cn(
+              "min-w-[210px] overflow-hidden rounded-xl px-3 py-1.5 text-center text-sm font-semibold capitalize transition-[transform,background-color,border-color] duration-200 ease-[var(--ease-out)] active:scale-[0.97]",
+              onToday
+                ? "bg-gold/15 text-gold ring-1 ring-inset ring-gold/20 hover:bg-gold/20"
+                : "text-foreground hover:bg-surface-2",
+            )}
+            triggerContent={
               <span key={navStep} className={cn("block", dateDirClass)}>
                 {shownLabel}
               </span>
-            </div>
-          ) : (
-            <Link
-              href={`${base}${viewSuffix ? `?${viewSuffix.slice(1)}` : ""}`}
-              title={t.backToday}
-              className="min-w-[210px] overflow-hidden rounded-xl px-3 py-1.5 text-center text-sm font-semibold capitalize text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2"
-            >
-              <span key={navStep} className={cn("block", dateDirClass)}>
-                {shownLabel}
-              </span>
-            </Link>
-          )}
+            }
+            onSelect={(d) => {
+              setNavDir(null);
+              router.push(`${base}?date=${d}${viewSuffix}`);
+            }}
+          />
 
           <Link
             href={navHref(1)}
@@ -1311,7 +1298,7 @@ export function CalendarClient({
           )}
         </div>
 
-        {/* Staff filter (week) + date picker */}
+        {/* Staff filter (week) + full-view toggle */}
         <div className="flex items-center justify-center gap-2 justify-self-end xl:justify-end">
           {isWeek && staff.length > 0 && (
             <SelectMenu
@@ -1326,18 +1313,6 @@ export function CalendarClient({
               ]}
             />
           )}
-          <DatePicker
-            value={date}
-            today={today}
-            locale={locale}
-            todayLabel={t.backToday}
-            prevLabel={t.prev}
-            nextLabel={t.next}
-            onSelect={(d) => {
-              setNavDir(null);
-              router.push(`${base}?date=${d}${viewSuffix}`);
-            }}
-          />
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
@@ -1359,7 +1334,7 @@ export function CalendarClient({
         </div>
       </div>
 
-      {/* Secondary bar: guide toggle + pause-online-bookings toggle.
+      {/* Secondary bar: guide toggle + closures.
           Hidden in full view — there the calendar gets every pixel. */}
       {!fullscreen && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6 short:py-1.5">
@@ -1376,19 +1351,6 @@ export function CalendarClient({
           {t.guideButton}
         </button>
         <button
-          onClick={togglePause}
-          disabled={pausePending}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors duration-200 ease-[var(--ease-out)] disabled:opacity-50",
-            paused
-              ? "border-success/40 text-success hover:bg-success/10"
-              : "border-border text-muted hover:border-warning/40 hover:bg-warning/10 hover:text-warning",
-          )}
-        >
-          {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-          {paused ? t.resumeBookings : t.pauseBookings}
-        </button>
-        <button
           onClick={() =>
             setClosureForm({
               date: today >= date && days.includes(today) ? today : date,
@@ -1403,14 +1365,6 @@ export function CalendarClient({
           {t.closureBtn}
         </button>
       </div>
-      )}
-
-      {/* Paused banner */}
-      {paused && (
-        <div className="flex items-start gap-2 border-b border-warning/30 bg-warning/10 px-6 py-2.5 text-sm text-warning">
-          <Pause className="mt-0.5 size-4 shrink-0" />
-          <span>{t.pausedBanner}</span>
-        </div>
       )}
 
       {/* Guide / instructions panel */}
