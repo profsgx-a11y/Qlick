@@ -52,9 +52,11 @@ import {
   resizeBooking,
   setBookingsPaused,
 } from "./actions";
+import { saveClosure, deleteClosure } from "../settings/closures-actions";
 import { BookingEditModal } from "./booking-edit-modal";
 import { DatePicker } from "./date-picker";
 import { SelectMenu } from "@/components/ui/select-menu";
+import { TimeSelect } from "@/components/ui/time-select";
 import {
   HOUR_HEIGHT,
   PX_PER_MIN,
@@ -210,6 +212,38 @@ export function CalendarClient({
 
   // Week-only staff filter.
   const [staffFilter, setStaffFilter] = useState<string>("all");
+
+  // Holiday / special-hours quick editor. The date lives in the form (defaults
+  // to the day being viewed) so it works in week and month views alike.
+  const [closureForm, setClosureForm] = useState<{
+    date: string;
+    mode: "normal" | "closed" | "special";
+    open: string;
+    close: string;
+  } | null>(null);
+  const [closurePending, startClosureTransition] = useTransition();
+  const submitClosure = () => {
+    const f = closureForm;
+    if (!f) return;
+    startClosureTransition(async () => {
+      const res =
+        f.mode === "normal"
+          ? await deleteClosure(locale, f.date)
+          : await saveClosure(locale, {
+              date: f.date,
+              is_closed: f.mode === "closed",
+              special_open_time: f.mode === "special" ? f.open : null,
+              special_close_time: f.mode === "special" ? f.close : null,
+              reason: null,
+            });
+      if (res.ok) {
+        setClosureForm(null);
+        router.refresh();
+      } else {
+        setToast(dashErr(dd.errors, res.error, t.somethingWrong));
+      }
+    });
+  };
 
   // Help panel + temporary pause of online bookings.
   const [helpOpen, setHelpOpen] = useState(false);
@@ -1316,6 +1350,20 @@ export function CalendarClient({
           {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
           {paused ? t.resumeBookings : t.pauseBookings}
         </button>
+        <button
+          onClick={() =>
+            setClosureForm({
+              date: today >= date && days.includes(today) ? today : date,
+              mode: "closed",
+              open: "09:00",
+              close: "14:00",
+            })
+          }
+          className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors duration-200 ease-[var(--ease-out)] hover:border-gold/40 hover:bg-gold/10 hover:text-gold"
+        >
+          <CalendarOff className="size-3.5" />
+          {t.closureBtn}
+        </button>
       </div>
 
       {/* Paused banner */}
@@ -2089,6 +2137,124 @@ export function CalendarClient({
             </div>
           )}
         </div>
+      )}
+
+      {/* Day closure / special-hours quick editor */}
+      {closureForm && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => !closurePending && setClosureForm(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[360px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl">
+            <h3 className="font-display text-base font-bold text-foreground">
+              {t.closureTitle}
+            </h3>
+            <p className="mt-0.5 text-sm capitalize text-gold">
+              {intl(closureForm.date, {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+
+            <div className="mt-3">
+              <DatePicker
+                inline
+                value={closureForm.date}
+                today={today}
+                locale={locale}
+                todayLabel={t.backToday}
+                prevLabel={t.prev}
+                nextLabel={t.next}
+                onSelect={(d) => setClosureForm({ ...closureForm, date: d })}
+              />
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {(["normal", "closed", "special"] as const).map((m) => {
+                const label =
+                  m === "normal"
+                    ? t.closureNormal
+                    : m === "closed"
+                      ? t.closureClosed
+                      : t.closureSpecial;
+                const on = closureForm.mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setClosureForm({ ...closureForm, mode: m })}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-lg border px-3 py-2 text-left text-sm transition-colors",
+                      on
+                        ? "border-gold/40 bg-gold/10 text-foreground"
+                        : "border-border text-muted hover:bg-surface-2",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-3.5 shrink-0 rounded-full border",
+                        on ? "border-gold bg-gold" : "border-muted-2",
+                      )}
+                    />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {closureForm.mode === "special" && (
+              <div className="mt-3 flex items-end gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase text-muted-2">
+                    {t.closureFrom}
+                  </span>
+                  <TimeSelect
+                    value={closureForm.open}
+                    onChange={(v) => setClosureForm({ ...closureForm, open: v })}
+                  />
+                </label>
+                <span className="pb-2 text-muted-2">—</span>
+                <label className="flex flex-col gap-1">
+                  <span className="text-[11px] font-medium uppercase text-muted-2">
+                    {t.closureTo}
+                  </span>
+                  <TimeSelect
+                    value={closureForm.close}
+                    onChange={(v) =>
+                      setClosureForm({ ...closureForm, close: v })
+                    }
+                  />
+                </label>
+              </div>
+            )}
+
+            <p className="mt-3 text-xs text-muted-2">{t.closureHint}</p>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setClosureForm(null)}
+                disabled={closurePending}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted hover:bg-surface-2 hover:text-foreground disabled:opacity-40"
+              >
+                {t.closureCancel}
+              </button>
+              <button
+                onClick={submitClosure}
+                disabled={closurePending}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black hover:bg-gold/90 disabled:opacity-40"
+              >
+                {closurePending ? (
+                  <RotateCcw className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {t.closureSave}
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Center-screen toast */}

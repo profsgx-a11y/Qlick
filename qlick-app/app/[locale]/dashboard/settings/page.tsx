@@ -9,6 +9,7 @@ import { getPlanState } from "@/lib/subscription";
 import { gcalConfigured } from "@/lib/google/calendar";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { HoursEditor } from "./hours-editor";
+import { ClosuresEditor } from "./closures-editor";
 import { BusinessInfoEditor } from "./business-info-editor";
 import { CategoryEditor, type CategoryGroup } from "./category-editor";
 import { DeleteShop } from "./delete-shop";
@@ -32,28 +33,46 @@ export default async function SettingsPage({
     await requireBusiness(locale);
   const supabase = await createClient();
 
-  const [{ data: b }, { data: hours }, { data: allCats }, { data: bizCats }] =
-    await Promise.all([
-      supabase
-        .from("businesses")
-        .select("name, email, phone, landline, address, slug, status, day_order, logo_url, cover_url, deletion_scheduled_at")
-        .eq("id", business.id)
-        .maybeSingle(),
-      supabase
-        .from("business_hours")
-        .select("day_of_week, is_closed, open_time, close_time, order_index")
-        .eq("business_id", business.id)
-        .order("day_of_week")
-        .order("order_index"),
-      supabase
-        .from("categories")
-        .select("id, name_el, name_en, parent_id, order_index")
-        .order("order_index"),
-      supabase
-        .from("business_categories")
-        .select("category_id")
-        .eq("business_id", business.id),
-    ]);
+  // Cutoff to drop past exceptions from the editor. Exactness doesn't matter
+  // (a few hours around midnight); Greek businesses live in Europe/Athens.
+  const todayIso = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Athens",
+  }).format(new Date());
+
+  const [
+    { data: b },
+    { data: hours },
+    { data: allCats },
+    { data: bizCats },
+    { data: closures },
+  ] = await Promise.all([
+    supabase
+      .from("businesses")
+      .select("name, email, phone, landline, address, slug, status, day_order, logo_url, cover_url, deletion_scheduled_at")
+      .eq("id", business.id)
+      .maybeSingle(),
+    supabase
+      .from("business_hours")
+      .select("day_of_week, is_closed, open_time, close_time, order_index")
+      .eq("business_id", business.id)
+      .order("day_of_week")
+      .order("order_index"),
+    supabase
+      .from("categories")
+      .select("id, name_el, name_en, parent_id, order_index")
+      .order("order_index"),
+    supabase
+      .from("business_categories")
+      .select("category_id")
+      .eq("business_id", business.id),
+    // Only future/current exceptions — past ones are noise in the editor.
+    supabase
+      .from("business_closures")
+      .select("date, is_closed, special_open_time, special_close_time, reason")
+      .eq("business_id", business.id)
+      .gte("date", todayIso)
+      .order("date"),
+  ]);
 
   // Group categories: each parent with its children, then childless top-levels.
   const cats = allCats ?? [];
@@ -234,6 +253,8 @@ export default async function SettingsPage({
         />
 
         <HoursEditor locale={locale} initialDays={initialDays} />
+
+        <ClosuresEditor locale={locale} initial={closures ?? []} />
 
         <GoogleCalendarSection
           locale={locale}
