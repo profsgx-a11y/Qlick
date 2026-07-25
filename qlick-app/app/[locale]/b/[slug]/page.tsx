@@ -111,21 +111,41 @@ export default async function PublicBusinessPage({
     isFavorited = !!fav;
   }
 
-  const [{ data: services }, { data: hours }] = await Promise.all([
-    supabase
-      .from("services")
-      .select("id, name, description, duration_minutes, price_cents")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .eq("bookable_online", true)
-      .order("order_index")
-      .order("created_at"),
-    supabase
-      .from("business_hours")
-      .select("day_of_week, is_closed, open_time, close_time")
-      .eq("business_id", business.id)
-      .order("day_of_week"),
-  ]);
+  // Closures window for the open-now chip: today → +8 days in the business
+  // timezone (covers the chip's up-to-7-days "opens next" lookahead).
+  const bizTz = business.timezone || "Europe/Athens";
+  const isoDate = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: bizTz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  const closuresFrom = isoDate(new Date());
+  const closuresTo = isoDate(new Date(Date.now() + 8 * 24 * 60 * 60 * 1000));
+
+  const [{ data: services }, { data: hours }, { data: closureRows }] =
+    await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, description, duration_minutes, price_cents")
+        .eq("business_id", business.id)
+        .eq("is_active", true)
+        .eq("bookable_online", true)
+        .order("order_index")
+        .order("created_at"),
+      supabase
+        .from("business_hours")
+        .select("day_of_week, is_closed, open_time, close_time")
+        .eq("business_id", business.id)
+        .order("day_of_week"),
+      supabase
+        .from("business_closures")
+        .select("date, is_closed, special_open_time, special_close_time")
+        .eq("business_id", business.id)
+        .gte("date", closuresFrom)
+        .lte("date", closuresTo),
+    ]);
 
   // ── Booking data for the in-page booking modal ──────────────────────────
   // Mirrors what /b/[slug]/book/page.tsx loads, so the popup runs the exact
@@ -260,12 +280,15 @@ export default async function PublicBusinessPage({
     : 0;
 
   // "Open now / closed · opens Mon 09:00" chip next to the rating.
+  const closuresByDate: Record<string, ClosureRow> = {};
+  for (const c of closureRows ?? []) closuresByDate[c.date] = c;
   const openInfo = openStatusNow(
     hours ?? [],
-    business.timezone || "Europe/Athens",
+    bizTz,
     new Date(),
     t.days,
     { opensAt: t.opensAt, closesAt: t.closesAt },
+    closuresByDate,
   );
   const staffById = new Map(
     (staffRows ?? []).map((s) => [s.id, s] as const),
@@ -694,11 +717,19 @@ interface HourRow {
   close_time: string | null;
 }
 
+interface ClosureRow {
+  date: string;
+  is_closed: boolean;
+  special_open_time: string | null;
+  special_close_time: string | null;
+}
+
 /**
  * "Open now / Closed · opens Mon 09:00" from the weekly hours. Uses the
- * business timezone so it's correct for visitors abroad. Overnight shifts
- * (close ≤ open) and special closures are out of scope here — this mirrors
- * the weekly-hours sidebar. Returns null when no hours are set.
+ * business timezone so it's correct for visitors abroad. Honours
+ * `business_closures` per calendar date: a closed day is skipped entirely and
+ * special open/close times override the weekly hours. Overnight shifts
+ * (close ≤ open) are still out of scope. Returns null when no hours are set.
  */
 function openStatusNow(
   hours: HourRow[],
@@ -706,6 +737,7 @@ function openStatusNow(
   now: Date,
   dayNames: string[],
   labels: { opensAt: string; closesAt: string },
+  closuresByDate: Record<string, ClosureRow> = {},
 ): { open: boolean; label: string } | null {
   const toMin = (t: string) => {
     const [h, m] = t.split(":").map(Number);
@@ -714,20 +746,37 @@ function openStatusNow(
   const fmt = (min: number) =>
     `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
-  const shifts = hours
-    .filter((r) => !r.is_closed && r.open_time && r.close_time)
-    .map((r) => ({
-      dow: r.day_of_week,
-      open: toMin(r.open_time as string),
-      close: toMin(r.close_time as string),
-    }))
-    .filter((s) => s.close > s.open);
-  if (shifts.length === 0) return null;
+  type Shift = { open: number; close: number };
+  const weeklyByDow: Record<number, Shift[]> = {};
+  for (const r of hours) {
+    if (r.is_closed || !r.open_time || !r.close_time) continue;
+    const open = toMin(r.open_time);
+    const close = toMin(r.close_time);
+    if (close > open) (weeklyByDow[r.day_of_week] ??= []).push({ open, close });
+  }
+  if (Object.keys(weeklyByDow).length === 0) return null;
 
-  const parts = new Intl.DateTimeFormat("en-US", {
+  // Effective shifts for a given calendar date, applying any closure override.
+  const shiftsFor = (dateStr: string, dow: number): Shift[] => {
+    const c = closuresByDate[dateStr];
+    if (c) {
+      if (c.is_closed) return [];
+      if (c.special_open_time && c.special_close_time) {
+        const open = toMin(c.special_open_time);
+        const close = toMin(c.special_close_time);
+        return close > open ? [{ open, close }] : [];
+      }
+    }
+    return weeklyByDow[dow] ?? [];
+  };
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     hour12: false,
     weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   }).formatToParts(now);
@@ -739,15 +788,20 @@ function openStatusNow(
     ] ?? 0;
   const nowMin = (Number(map.hour) % 24) * 60 + Number(map.minute);
 
-  const openShift = shifts.find(
-    (s) => s.dow === dow && nowMin >= s.open && nowMin < s.close,
-  );
+  // Calendar date (in the business tz) at a given day offset from today.
+  const base = Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day));
+  const dateForOffset = (i: number) =>
+    new Date(base + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const today = shiftsFor(dateForOffset(0), dow);
+
+  const openShift = today.find((s) => nowMin >= s.open && nowMin < s.close);
   if (openShift) {
     return { open: true, label: labels.closesAt.replace("{time}", fmt(openShift.close)) };
   }
 
-  const laterToday = shifts
-    .filter((s) => s.dow === dow && s.open > nowMin)
+  const laterToday = today
+    .filter((s) => s.open > nowMin)
     .sort((a, b) => a.open - b.open)[0];
   if (laterToday) {
     return { open: false, label: labels.opensAt.replace("{time}", fmt(laterToday.open)) };
@@ -755,7 +809,7 @@ function openStatusNow(
 
   for (let i = 1; i <= 7; i++) {
     const d = (dow + i) % 7;
-    const next = shifts.filter((s) => s.dow === d).sort((a, b) => a.open - b.open)[0];
+    const next = shiftsFor(dateForOffset(i), d).sort((a, b) => a.open - b.open)[0];
     if (next) {
       return {
         open: false,
