@@ -31,8 +31,6 @@ import {
   Info,
   Flag,
   HelpCircle,
-  Pause,
-  Play,
   ShieldCheck,
   StickyNote,
   Maximize2,
@@ -48,12 +46,7 @@ import {
 } from "@/components/dashboard/customer-actions-modal";
 import { zonedTimeToUtc } from "@/lib/availability";
 import { updateBookingStatus } from "../bookings/actions";
-import {
-  createWalkin,
-  moveBooking,
-  resizeBooking,
-  setBookingsPaused,
-} from "./actions";
+import { createWalkin, moveBooking, resizeBooking } from "./actions";
 import { saveClosure, deleteClosure } from "../settings/closures-actions";
 import { BookingEditModal } from "./booking-edit-modal";
 import { DatePicker } from "./date-picker";
@@ -136,7 +129,6 @@ interface Props {
   locale: string;
   ownerUserId: string;
   tz: string;
-  bookingsPaused: boolean;
   view: "day" | "week" | "month";
   date: string; // anchor date YYYY-MM-DD
   today: string;
@@ -158,7 +150,6 @@ export function CalendarClient({
   locale,
   ownerUserId,
   tz,
-  bookingsPaused,
   view,
   date,
   today,
@@ -253,22 +244,8 @@ export function CalendarClient({
   // z-40: above the shell, below toasts/modals (z-50+).
   const [fullscreen, setFullscreen] = useState(false);
 
-  // Help panel + temporary pause of online bookings.
+  // Help panel.
   const [helpOpen, setHelpOpen] = useState(false);
-  const [paused, setPaused] = useState(bookingsPaused);
-  useEffect(() => setPaused(bookingsPaused), [bookingsPaused]);
-  const [pausePending, startPauseTransition] = useTransition();
-  const togglePause = () => {
-    const next = !paused;
-    setPaused(next); // optimistic
-    startPauseTransition(async () => {
-      const res = await setBookingsPaused(locale, next);
-      if (!res.ok) {
-        setPaused(!next); // revert on failure
-        alert(dashErr(dd.errors, res.error, t.somethingWrong));
-      }
-    });
-  };
 
   const staffColors = useMemo(() => {
     const m: Record<string, string | null> = {};
@@ -1216,15 +1193,17 @@ export function CalendarClient({
         fullscreen && "fixed inset-0 z-40 bg-dashboard",
       )}
     >
-      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
-          Single-row grid only on xl — the three groups need ~750px of content
-          width; below that (tablets, landscape phones) they stack centered,
-          otherwise the fixed-width date navigator overlaps its neighbours.
-          On `short` (height-starved, e.g. landscape phones — wide!) they go
-          back on one wrapping row so the calendar keeps the screen height. */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3 short:flex-row short:flex-wrap short:items-center short:justify-between short:py-2">
-        {/* View switcher (Week / Month) with a sliding gold indicator */}
-        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0 short:mx-0">
+      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + full view].
+          Exactly two shapes, never a half-wrapped one: on `wide` a single
+          no-wrap row (the outer groups flex-1 so the date navigator sits dead
+          centre), below it neat centered rows stacked vertically. Anything in
+          between — letting the groups wrap onto a second line — reads as
+          scattered, so `flex-nowrap` forbids it. */}
+      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 wide:flex-row wide:flex-nowrap wide:items-center wide:gap-3 short:py-2">
+        {/* View switcher (Week / Month) with a sliding gold indicator.
+            Stays `w-fit` on every size — the indicator is sized as 50% of this
+            box, so letting it flex would detach it from the two w-24 links. */}
+        <div className="relative mx-auto flex w-fit shrink-0 rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium wide:mx-0">
           <span
             aria-hidden
             className="absolute inset-y-1 left-1 rounded-lg bg-gold/15 ring-1 ring-inset ring-gold/25 transition-transform duration-300 ease-[var(--ease-out)]"
@@ -1257,8 +1236,10 @@ export function CalendarClient({
           </Link>
         </div>
 
-        {/* Date navigator */}
-        <div className="flex items-center justify-center gap-2">
+        {/* Date navigator — takes the leftover width on `wide` and centres
+            itself in it, so it sits between the two side groups instead of
+            being pushed around by them. */}
+        <div className="flex items-center justify-center gap-2 wide:flex-1">
           <Link
             href={navHref(-1)}
             onClick={() => {
@@ -1266,29 +1247,39 @@ export function CalendarClient({
               setPendingLabel(stepLabel(-1));
               setNavStep((s) => s + 1);
             }}
-            className="group grid size-9 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
+            className="group grid size-9 shrink-0 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
             aria-label={t.prev}
           >
             <ChevronLeft className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:-translate-x-0.5" />
           </Link>
 
-          {onToday ? (
-            <div className="min-w-[210px] overflow-hidden rounded-xl bg-gold/15 px-3 py-1.5 text-center text-sm font-semibold capitalize text-gold ring-1 ring-inset ring-gold/20">
+          {/* The date label IS the picker trigger — one control instead of a
+              separate calendar button somewhere else on the toolbar. Jumping
+              back to today lives inside the popover. */}
+          <DatePicker
+            value={date}
+            today={today}
+            locale={locale}
+            todayLabel={t.backToday}
+            prevLabel={t.prev}
+            nextLabel={t.next}
+            align="center"
+            triggerClassName={cn(
+              "min-w-[210px] overflow-hidden rounded-xl px-3 py-1.5 text-center text-sm font-semibold capitalize transition-[transform,background-color,border-color] duration-200 ease-[var(--ease-out)] active:scale-[0.97]",
+              onToday
+                ? "bg-gold/15 text-gold ring-1 ring-inset ring-gold/20 hover:bg-gold/20"
+                : "text-foreground hover:bg-surface-2",
+            )}
+            triggerContent={
               <span key={navStep} className={cn("block", dateDirClass)}>
                 {shownLabel}
               </span>
-            </div>
-          ) : (
-            <Link
-              href={`${base}${viewSuffix ? `?${viewSuffix.slice(1)}` : ""}`}
-              title={t.backToday}
-              className="min-w-[210px] overflow-hidden rounded-xl px-3 py-1.5 text-center text-sm font-semibold capitalize text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2"
-            >
-              <span key={navStep} className={cn("block", dateDirClass)}>
-                {shownLabel}
-              </span>
-            </Link>
-          )}
+            }
+            onSelect={(d) => {
+              setNavDir(null);
+              router.push(`${base}?date=${d}${viewSuffix}`);
+            }}
+          />
 
           <Link
             href={navHref(1)}
@@ -1297,7 +1288,7 @@ export function CalendarClient({
               setPendingLabel(stepLabel(1));
               setNavStep((s) => s + 1);
             }}
-            className="group grid size-9 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
+            className="group grid size-9 shrink-0 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
             aria-label={t.next}
           >
             <ChevronRight className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
@@ -1311,8 +1302,8 @@ export function CalendarClient({
           )}
         </div>
 
-        {/* Staff filter (week) + date picker */}
-        <div className="flex items-center justify-center gap-2 justify-self-end xl:justify-end">
+        {/* Staff filter (week) + full-view toggle */}
+        <div className="flex shrink-0 items-center justify-center gap-2 wide:justify-end">
           {isWeek && staff.length > 0 && (
             <SelectMenu
               value={staffFilter}
@@ -1326,18 +1317,6 @@ export function CalendarClient({
               ]}
             />
           )}
-          <DatePicker
-            value={date}
-            today={today}
-            locale={locale}
-            todayLabel={t.backToday}
-            prevLabel={t.prev}
-            nextLabel={t.next}
-            onSelect={(d) => {
-              setNavDir(null);
-              router.push(`${base}?date=${d}${viewSuffix}`);
-            }}
-          />
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
@@ -1359,7 +1338,7 @@ export function CalendarClient({
         </div>
       </div>
 
-      {/* Secondary bar: guide toggle + pause-online-bookings toggle.
+      {/* Secondary bar: guide toggle + closures.
           Hidden in full view — there the calendar gets every pixel. */}
       {!fullscreen && (
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6 short:py-1.5">
@@ -1376,19 +1355,6 @@ export function CalendarClient({
           {t.guideButton}
         </button>
         <button
-          onClick={togglePause}
-          disabled={pausePending}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors duration-200 ease-[var(--ease-out)] disabled:opacity-50",
-            paused
-              ? "border-success/40 text-success hover:bg-success/10"
-              : "border-border text-muted hover:border-warning/40 hover:bg-warning/10 hover:text-warning",
-          )}
-        >
-          {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
-          {paused ? t.resumeBookings : t.pauseBookings}
-        </button>
-        <button
           onClick={() =>
             setClosureForm({
               date: today >= date && days.includes(today) ? today : date,
@@ -1403,14 +1369,6 @@ export function CalendarClient({
           {t.closureBtn}
         </button>
       </div>
-      )}
-
-      {/* Paused banner */}
-      {paused && (
-        <div className="flex items-start gap-2 border-b border-warning/30 bg-warning/10 px-6 py-2.5 text-sm text-warning">
-          <Pause className="mt-0.5 size-4 shrink-0" />
-          <span>{t.pausedBanner}</span>
-        </div>
       )}
 
       {/* Guide / instructions panel */}

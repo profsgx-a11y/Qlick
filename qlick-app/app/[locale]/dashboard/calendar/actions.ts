@@ -291,37 +291,6 @@ export async function createWalkin(
   };
 }
 
-/**
- * Toggle the "online bookings paused" flag. Owner/manager only. While paused,
- * customers can't book online (create_booking raises `bookings_paused`), but the
- * owner can still add bookings from the dashboard (walk-ins bypass the RPC).
- */
-export async function setBookingsPaused(
-  locale: string,
-  paused: boolean,
-): Promise<{ ok: boolean; error?: string }> {
-  const safeLocale = hasLocale(locale) ? locale : "el";
-  const supabase = await createClient();
-
-  const { data: biz } = await supabase
-    .from("my_businesses")
-    .select("id, my_role")
-    .limit(1)
-    .maybeSingle();
-  if (!biz?.id || (biz.my_role !== "owner" && biz.my_role !== "manager")) {
-    return { ok: false, error: "no_permission" };
-  }
-
-  const { error } = await supabase
-    .from("businesses")
-    .update({ bookings_paused: paused })
-    .eq("id", biz.id);
-  if (error) return { ok: false, error: "save_failed" };
-
-  revalidatePath(`/${safeLocale}/dashboard/calendar`);
-  return { ok: true };
-}
-
 export interface MoveInput {
   bookingId: string;
   startsAtIso: string;

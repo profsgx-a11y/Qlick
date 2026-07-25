@@ -82,19 +82,20 @@ export default async function PublicBusinessPage({
   const { data: business } = await supabase
     .from("businesses")
     .select(
-      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, bookings_paused, timezone, google_place_id",
+      "id, name, slug, status, phone, landline, address, description, day_order, show_reviews, logo_url, cover_url, timezone, google_place_id",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!business || business.status !== "active") notFound();
 
-  // Manual pause OR expired trial/subscription both close online bookings
-  // (create_booking enforces the same rule server-side).
+  // An expired trial/subscription closes online bookings (create_booking
+  // enforces the same rule server-side). Customers see a neutral "temporarily
+  // paused" notice — never anything about billing.
   const { data: planActive } = await supabase.rpc("business_plan_active", {
     p_business_id: business.id,
   });
-  const bookingsPaused = (business.bookings_paused ?? false) || !(planActive ?? true);
+  const bookingsPaused = !(planActive ?? true);
 
   // Is the visitor signed in, and have they favorited this business?
   const {

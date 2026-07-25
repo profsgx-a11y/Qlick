@@ -27,6 +27,16 @@ interface DatePickerProps {
   onSelect: (date: string) => void;
   /** Render the calendar always-visible in the flow (no popover trigger). */
   inline?: boolean;
+  /**
+   * Replace the default pill trigger's content — lets a caller use its own
+   * label (e.g. the calendar's date navigator) as the thing that opens the
+   * picker, instead of showing a second, separate date button.
+   */
+  triggerContent?: React.ReactNode;
+  /** Classes for the trigger button; replaces the default pill styling. */
+  triggerClassName?: string;
+  /** Which edge the popover is anchored to. */
+  align?: "right" | "center";
 }
 
 /**
@@ -44,6 +54,9 @@ export function DatePicker({
   nextLabel,
   onSelect,
   inline = false,
+  triggerContent,
+  triggerClassName,
+  align = "right",
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const sel = parse(value);
@@ -207,18 +220,28 @@ export function DatePicker({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="inline-flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/15 px-3 py-1.5 text-sm font-medium text-gold transition-[transform,background-color,border-color] duration-200 ease-[var(--ease-out)] hover:border-gold/60 hover:bg-gold/20 active:scale-[0.97]"
+        className={
+          triggerClassName ??
+          "inline-flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/15 px-3 py-1.5 text-sm font-medium text-gold transition-[transform,background-color,border-color] duration-200 ease-[var(--ease-out)] hover:border-gold/60 hover:bg-gold/20 active:scale-[0.97]"
+        }
       >
-        <CalendarIcon className="size-4 shrink-0" />
-        {/* Label hidden on height-starved screens: the icon alone keeps the
-            single-row toolbar narrow enough for landscape phones. */}
-        <span className="tabular-nums short:hidden">{triggerLabel}</span>
+        {triggerContent ?? (
+          <>
+            <CalendarIcon className="size-4 shrink-0" />
+            <span className="tabular-nums">{triggerLabel}</span>
+          </>
+        )}
       </button>
 
       {open && (
         <div
           role="dialog"
-          className="animate-pop absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl border border-border bg-surface p-3 elev-card short:max-h-[calc(100dvh-7rem)] short:overflow-y-auto"
+          className={cn(
+            "animate-pop absolute z-50 mt-2 w-72 rounded-2xl border border-border bg-surface p-3 elev-card short:max-h-[calc(100dvh-7rem)] short:overflow-y-auto",
+            align === "center"
+              ? "left-1/2 origin-top -translate-x-1/2"
+              : "right-0 origin-top-right",
+          )}
         >
           {panel}
         </div>
