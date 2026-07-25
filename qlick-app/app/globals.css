@@ -110,16 +110,24 @@
   --radius-xl: var(--radius-xl);
 }
 
-/* `desk:` — a "real desktop" viewport: wide enough for the permanent sidebar
-   AND tall enough that it isn't a phone held sideways. Landscape phones are
-   ≥768px wide but ≤~460px tall, so width-only breakpoints (md:) wrongly give
-   them the desktop dashboard shell; gate the shell on height too. */
-@custom-variant desk (@media (min-width: 768px) and (min-height: 500px));
+/* `desk:` — a "real desktop" viewport, the only place the permanent sidebar
+   column earns its 256px: laptop-wide AND tall enough that it isn't a phone
+   held sideways. Everything below — phones in both orientations and tablets
+   up to iPad-landscape (1024–1180px) — uses the hamburger + drawer instead,
+   so touch devices never lose a quarter of the screen to navigation. */
+@custom-variant desk (@media (min-width: 1280px) and (min-height: 500px));
 
 /* `short:` — the complement for HEIGHT-starved viewports (landscape phones,
-   squashed windows): compress vertical chrome (compact topbar, single-row
-   toolbars, tighter margins) so the actual content keeps most of the screen. */
+   squashed windows): compress vertical chrome (compact topbar, tighter
+   margins) so the actual content keeps most of the screen. */
 @custom-variant short (@media (max-height: 499.98px));
+
+/* `wide:` — enough width for a toolbar's groups to sit on ONE row. The
+   calendar's three groups need ~736px + padding, so below this they must
+   stack as neat centered rows rather than half-wrapping into a scattered
+   two-row mess. Deliberately viewport-based: the sidebar only exists at
+   `desk` (1280px+), where the remaining ~976px clears this comfortably. */
+@custom-variant wide (@media (min-width: 820px));
 
 * {
   border-color: var(--border);

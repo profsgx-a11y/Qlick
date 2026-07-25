@@ -1193,15 +1193,17 @@ export function CalendarClient({
         fullscreen && "fixed inset-0 z-40 bg-dashboard",
       )}
     >
-      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
-          Single-row grid only on xl — the three groups need ~750px of content
-          width; below that (tablets, landscape phones) they stack centered,
-          otherwise the fixed-width date navigator overlaps its neighbours.
-          On `short` (height-starved, e.g. landscape phones — wide!) they go
-          back on one wrapping row so the calendar keeps the screen height. */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3 short:flex-row short:flex-wrap short:items-center short:justify-between short:py-2">
-        {/* View switcher (Week / Month) with a sliding gold indicator */}
-        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0 short:mx-0">
+      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + full view].
+          Exactly two shapes, never a half-wrapped one: on `wide` a single
+          no-wrap row (the outer groups flex-1 so the date navigator sits dead
+          centre), below it neat centered rows stacked vertically. Anything in
+          between — letting the groups wrap onto a second line — reads as
+          scattered, so `flex-nowrap` forbids it. */}
+      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 wide:flex-row wide:flex-nowrap wide:items-center wide:gap-3 short:py-2">
+        {/* View switcher (Week / Month) with a sliding gold indicator.
+            Stays `w-fit` on every size — the indicator is sized as 50% of this
+            box, so letting it flex would detach it from the two w-24 links. */}
+        <div className="relative mx-auto flex w-fit shrink-0 rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium wide:mx-0">
           <span
             aria-hidden
             className="absolute inset-y-1 left-1 rounded-lg bg-gold/15 ring-1 ring-inset ring-gold/25 transition-transform duration-300 ease-[var(--ease-out)]"
@@ -1234,8 +1236,10 @@ export function CalendarClient({
           </Link>
         </div>
 
-        {/* Date navigator */}
-        <div className="flex items-center justify-center gap-2">
+        {/* Date navigator — takes the leftover width on `wide` and centres
+            itself in it, so it sits between the two side groups instead of
+            being pushed around by them. */}
+        <div className="flex items-center justify-center gap-2 wide:flex-1">
           <Link
             href={navHref(-1)}
             onClick={() => {
@@ -1243,7 +1247,7 @@ export function CalendarClient({
               setPendingLabel(stepLabel(-1));
               setNavStep((s) => s + 1);
             }}
-            className="group grid size-9 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
+            className="group grid size-9 shrink-0 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
             aria-label={t.prev}
           >
             <ChevronLeft className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:-translate-x-0.5" />
@@ -1284,7 +1288,7 @@ export function CalendarClient({
               setPendingLabel(stepLabel(1));
               setNavStep((s) => s + 1);
             }}
-            className="group grid size-9 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
+            className="group grid size-9 shrink-0 place-items-center rounded-xl bg-gold text-black transition-[transform,background-color,box-shadow] duration-200 ease-[var(--ease-out)] hover:bg-gold-bright hover:[box-shadow:0_6px_20px_-4px_var(--gold-glow)] active:scale-95"
             aria-label={t.next}
           >
             <ChevronRight className="size-4 transition-transform duration-200 ease-[var(--ease-out)] group-hover:translate-x-0.5" />
@@ -1299,7 +1303,7 @@ export function CalendarClient({
         </div>
 
         {/* Staff filter (week) + full-view toggle */}
-        <div className="flex items-center justify-center gap-2 justify-self-end xl:justify-end">
+        <div className="flex shrink-0 items-center justify-center gap-2 wide:justify-end">
           {isWeek && staff.length > 0 && (
             <SelectMenu
               value={staffFilter}
