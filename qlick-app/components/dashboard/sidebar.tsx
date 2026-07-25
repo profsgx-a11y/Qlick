@@ -164,15 +164,16 @@ export function Sidebar({
 
   return (
     <>
-      {/* Desktop: permanent sidebar column */}
-      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-border bg-surface/40 md:flex">
+      {/* Desktop: permanent sidebar column. `desk:` (not `md:`) so landscape
+          phones — wide but short — keep the mobile drawer instead. */}
+      <aside className="hidden h-full w-64 shrink-0 flex-col border-r border-border bg-surface/40 desk:flex">
         {body(false)}
       </aside>
 
       {/* Mobile: drawer — only mounted while open, so it can never overlay
           content (or block taps) when closed. */}
       {open && (
-        <div className="md:hidden">
+        <div className="desk:hidden">
           <div
             className="fixed inset-0 z-40 bg-black/60"
             onClick={close}

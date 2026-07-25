@@ -210,13 +210,15 @@ export function DatePicker({
         className="inline-flex items-center gap-2 rounded-xl border border-gold/30 bg-gold/15 px-3 py-1.5 text-sm font-medium text-gold transition-[transform,background-color,border-color] duration-200 ease-[var(--ease-out)] hover:border-gold/60 hover:bg-gold/20 active:scale-[0.97]"
       >
         <CalendarIcon className="size-4 shrink-0" />
-        <span className="tabular-nums">{triggerLabel}</span>
+        {/* Label hidden on height-starved screens: the icon alone keeps the
+            single-row toolbar narrow enough for landscape phones. */}
+        <span className="tabular-nums short:hidden">{triggerLabel}</span>
       </button>
 
       {open && (
         <div
           role="dialog"
-          className="animate-pop absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl border border-border bg-surface p-3 elev-card"
+          className="animate-pop absolute right-0 z-50 mt-2 w-72 origin-top-right rounded-2xl border border-border bg-surface p-3 elev-card short:max-h-[calc(100dvh-7rem)] short:overflow-y-auto"
         >
           {panel}
         </div>

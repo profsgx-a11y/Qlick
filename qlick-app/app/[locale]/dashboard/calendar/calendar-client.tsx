@@ -35,6 +35,8 @@ import {
   Play,
   ShieldCheck,
   StickyNote,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/lib/format";
@@ -244,6 +246,12 @@ export function CalendarClient({
       }
     });
   };
+
+  // Full-view mode: the whole calendar (toolbar + grid) becomes a fixed
+  // overlay covering the dashboard chrome (sidebar/topbar), so the schedule
+  // gets the entire screen — the main way to work on landscape phones.
+  // z-40: above the shell, below toasts/modals (z-50+).
+  const [fullscreen, setFullscreen] = useState(false);
 
   // Help panel + temporary pause of online bookings.
   const [helpOpen, setHelpOpen] = useState(false);
@@ -1154,7 +1162,7 @@ export function CalendarClient({
                       body,
                     };
                   }}
-                  className="absolute inset-x-0 bottom-0 z-10 hidden h-2.5 cursor-ns-resize items-end justify-center md:flex"
+                  className="absolute inset-x-0 bottom-0 z-10 hidden h-2.5 cursor-ns-resize items-end justify-center desk:flex"
                   title={t.dragResize}
                 >
                   <span className="mb-0.5 h-0.5 w-5 rounded-full bg-foreground/40" />
@@ -1202,11 +1210,21 @@ export function CalendarClient({
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker] */}
-      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 md:grid md:grid-cols-3 md:items-center md:gap-3">
+    <div
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 flex-col",
+        fullscreen && "fixed inset-0 z-40 bg-dashboard",
+      )}
+    >
+      {/* Toolbar: [view switcher] · [◀ date ▶] · [filter + picker].
+          Single-row grid only on xl — the three groups need ~750px of content
+          width; below that (tablets, landscape phones) they stack centered,
+          otherwise the fixed-width date navigator overlaps its neighbours.
+          On `short` (height-starved, e.g. landscape phones — wide!) they go
+          back on one wrapping row so the calendar keeps the screen height. */}
+      <div className="flex flex-col items-stretch gap-2 border-b border-border px-4 py-3 sm:px-6 xl:grid xl:grid-cols-3 xl:items-center xl:gap-3 short:flex-row short:flex-wrap short:items-center short:justify-between short:py-2">
         {/* View switcher (Week / Month) with a sliding gold indicator */}
-        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium md:mx-0">
+        <div className="relative mx-auto flex w-fit justify-self-start rounded-xl border border-border bg-surface/40 p-1 text-sm font-medium xl:mx-0 short:mx-0">
           <span
             aria-hidden
             className="absolute inset-y-1 left-1 rounded-lg bg-gold/15 ring-1 ring-inset ring-gold/25 transition-transform duration-300 ease-[var(--ease-out)]"
@@ -1294,7 +1312,7 @@ export function CalendarClient({
         </div>
 
         {/* Staff filter (week) + date picker */}
-        <div className="flex items-center justify-center gap-2 justify-self-end md:justify-end">
+        <div className="flex items-center justify-center gap-2 justify-self-end xl:justify-end">
           {isWeek && staff.length > 0 && (
             <SelectMenu
               value={staffFilter}
@@ -1320,11 +1338,31 @@ export function CalendarClient({
               router.push(`${base}?date=${d}${viewSuffix}`);
             }}
           />
+          <button
+            type="button"
+            onClick={() => setFullscreen((v) => !v)}
+            aria-label={fullscreen ? t.exitFullView : t.fullView}
+            title={fullscreen ? t.exitFullView : t.fullView}
+            className={cn(
+              "grid size-9 shrink-0 place-items-center rounded-xl border transition-colors duration-200 ease-[var(--ease-out)] active:scale-95",
+              fullscreen
+                ? "border-gold/40 bg-gold/10 text-gold"
+                : "border-border text-muted hover:border-gold/40 hover:text-gold",
+            )}
+          >
+            {fullscreen ? (
+              <Minimize2 className="size-4" />
+            ) : (
+              <Maximize2 className="size-4" />
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Secondary bar: guide toggle + pause-online-bookings toggle */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6">
+      {/* Secondary bar: guide toggle + pause-online-bookings toggle.
+          Hidden in full view — there the calendar gets every pixel. */}
+      {!fullscreen && (
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2 sm:px-6 short:py-1.5">
         <button
           onClick={() => setHelpOpen((v) => !v)}
           className={cn(
@@ -1365,6 +1403,7 @@ export function CalendarClient({
           {t.closureBtn}
         </button>
       </div>
+      )}
 
       {/* Paused banner */}
       {paused && (
@@ -1375,7 +1414,7 @@ export function CalendarClient({
       )}
 
       {/* Guide / instructions panel */}
-      {helpOpen && (
+      {!fullscreen && helpOpen && (
         <div className="border-b border-border bg-surface/40 px-6 py-4 text-sm">
           <div className="grid gap-5 md:grid-cols-2">
             <div>
@@ -1417,7 +1456,7 @@ export function CalendarClient({
       {/* Grid area — wrapper clips the slide-in so it never spills a scrollbar */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       {isMonth ? (
-        <div className="animate-view flex-1 overflow-auto p-4">
+        <div className="animate-view flex-1 overflow-auto p-4 short:p-2">
           <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-border">
             {days.slice(0, 7).map((d) => (
               <div
@@ -1505,7 +1544,7 @@ export function CalendarClient({
           </div>
         </div>
       ) : (
-        <div className="animate-view m-4 flex min-h-0 min-w-0 flex-1 items-start">
+        <div className="animate-view m-4 flex min-h-0 min-w-0 flex-1 items-start short:m-2">
           {/* Fixed card frame (border + corners stay) with the schedule scrolling inside it */}
           <div className="flex max-h-full max-w-full overflow-clip rounded-b-2xl">
             <div className="overflow-auto">
@@ -1827,7 +1866,7 @@ export function CalendarClient({
                 className="fixed inset-0 z-40 bg-black/50"
                 onClick={() => !isPending && setNewSlot(null)}
               />
-              <div className="fixed left-1/2 top-1/2 z-50 w-[400px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+              <div className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[400px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl">
                 <div className="mb-3 flex items-start justify-between">
                   <div>
                     <h3 className="font-display text-base font-bold text-foreground">
@@ -2049,7 +2088,7 @@ export function CalendarClient({
                 className="fixed inset-0 z-40 bg-black/50"
                 onClick={() => !isPending && setPendingMove(null)}
               />
-              <div className="fixed left-1/2 top-1/2 z-50 w-[360px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+              <div className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[360px] max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-surface p-5 shadow-2xl">
                 <h3 className="font-display text-base font-bold text-foreground">
                   {t.moveBooking}
                 </h3>

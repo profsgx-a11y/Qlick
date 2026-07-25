@@ -110,6 +110,17 @@
   --radius-xl: var(--radius-xl);
 }
 
+/* `desk:` — a "real desktop" viewport: wide enough for the permanent sidebar
+   AND tall enough that it isn't a phone held sideways. Landscape phones are
+   ≥768px wide but ≤~460px tall, so width-only breakpoints (md:) wrongly give
+   them the desktop dashboard shell; gate the shell on height too. */
+@custom-variant desk (@media (min-width: 768px) and (min-height: 500px));
+
+/* `short:` — the complement for HEIGHT-starved viewports (landscape phones,
+   squashed windows): compress vertical chrome (compact topbar, single-row
+   toolbars, tighter margins) so the actual content keeps most of the screen. */
+@custom-variant short (@media (max-height: 499.98px));
+
 * {
   border-color: var(--border);
   /* Themed scrollbars — Firefox */

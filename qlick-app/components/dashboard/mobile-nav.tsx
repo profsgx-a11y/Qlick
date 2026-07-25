@@ -15,8 +15,9 @@ const MobileNavContext = createContext<MobileNavState>({
 /**
  * Shares the mobile sidebar-drawer open/close state between the hamburger
  * button (in the Topbar) and the drawer itself (the Sidebar). Wraps the whole
- * dashboard so both can read/write it. No effect on desktop (md+), where the
- * sidebar is a permanent in-flow column.
+ * dashboard so both can read/write it. No effect on desktop (the `desk:`
+ * variant — wide AND tall enough), where the sidebar is a permanent in-flow
+ * column; landscape phones use the drawer like portrait mobile.
  */
 export function MobileNavProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
