@@ -76,11 +76,14 @@ import {
 const RESIZE_SNAP_MIN = 5;
 const MIN_DURATION_MIN = 15;
 const STAFF_COL_WIDTH = 248;
-// Hour rail: the labels are always "HH:MM" (minLabel is 24h and locale-proof)
-// in tabular-nums, so they measure a fixed ~30.4px. 8px of breathing room on
-// each side — matching the `right-2` gap to the grid — is all the rail needs;
-// anything wider is dead space stolen from the columns.
-const RAIL_WIDTH = 47;
+// Hour rail. Labels are always "HH:MM" (minLabel is 24h and locale-proof) in
+// tabular-nums, so they measure a fixed ~30.4px. Sizing it so the label looks
+// evenly inset has to count what the eye actually sees on the right: the rail's
+// own 4px padding PLUS the 6px `mx-1.5` margin of the first day column = 10px.
+// So the left side gets ~10px too (44 − 4 − 30.4), instead of the 17.6-vs-14
+// mismatch a naive "equal padding inside the rail" gives.
+const RAIL_WIDTH = 44;
+const RAIL_PAD_RIGHT = 4; // `right-1`, mirrored by the column's 6px margin
 const HEAD_HEIGHT = 56; // single header (day view)
 const WEEK_DAY_HEAD = 30; // day band height (week)
 const WEEK_SUB_HEAD = 46; // staff sub-header height (week)
@@ -1526,8 +1529,11 @@ export function CalendarClient({
                 {marks.map((m) => (
                   <div
                     key={m}
-                    className="absolute right-2 font-display text-[11px] font-medium tabular-nums text-muted"
-                    style={{ top: (m - win.startMin) * PX_PER_MIN + TOP_PAD }}
+                    className="absolute font-display text-[11px] font-medium tabular-nums text-muted"
+                    style={{
+                      top: (m - win.startMin) * PX_PER_MIN + TOP_PAD,
+                      right: RAIL_PAD_RIGHT,
+                    }}
                   >
                     {minLabel(m)}
                   </div>
