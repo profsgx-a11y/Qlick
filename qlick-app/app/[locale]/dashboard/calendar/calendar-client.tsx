@@ -76,7 +76,12 @@ import {
 const RESIZE_SNAP_MIN = 5;
 const MIN_DURATION_MIN = 15;
 const STAFF_COL_WIDTH = 248;
-const RAIL_WIDTH = 56;
+// Hour rail. Labels are always "HH:MM" (minLabel is 24h and locale-proof) in
+// tabular-nums, so they measure a fixed ~30.4px — hence a fixed rail width.
+// Pinned 1px from the left edge, which leaves ~6.6px between the label and the
+// rail's right edge: deliberately tight on the left so the columns get the
+// room back (38px here, down from the original 56px).
+const RAIL_WIDTH = 38;
 const HEAD_HEIGHT = 56; // single header (day view)
 const WEEK_DAY_HEAD = 30; // day band height (week)
 const WEEK_SUB_HEAD = 46; // staff sub-header height (week)
@@ -1522,7 +1527,7 @@ export function CalendarClient({
                 {marks.map((m) => (
                   <div
                     key={m}
-                    className="absolute right-2 font-display text-[11px] font-medium tabular-nums text-muted"
+                    className="absolute left-px font-display text-[11px] font-medium tabular-nums text-muted"
                     style={{ top: (m - win.startMin) * PX_PER_MIN + TOP_PAD }}
                   >
                     {minLabel(m)}
