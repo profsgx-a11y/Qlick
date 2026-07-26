@@ -173,13 +173,24 @@ export default async function SettingsPage({
   // Subscription summary for the top-of-page card.
   const planState = await getPlanState(supabase, business.id);
   const st = t.settings;
-  const planLabel =
-    planState.plan === "monthly"
+  const isComp = planState.plan === "comp";
+  const planLabel = isComp
+    ? st.planComp
+    : planState.plan === "monthly"
       ? st.planMonthly
       : planState.plan === "yearly"
         ? st.planYearly
         : st.planFree;
-  const subStatus = !planState.active
+  const subStatus = isComp
+    ? planState.expiresAt === null || planState.daysLeft === null
+      ? st.compNoExpiry
+      : st.compExpires.replace(
+          "{date}",
+          new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "el-GR", {
+            dateStyle: "long",
+          }).format(new Date(planState.expiresAt)),
+        )
+    : !planState.active
     ? st.planExpired
     : planState.expiresAt === null || planState.daysLeft === null
       ? st.planNoExpiry

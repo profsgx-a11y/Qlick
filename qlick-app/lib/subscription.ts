@@ -7,8 +7,9 @@ export const FREE_LIMITS = {
 } as const;
 
 export interface PlanState {
-  plan: "free" | "monthly" | "yearly";
-  /** Effective expiry: trial end (free) or subscription end (paid). */
+  /** "comp" = admin-granted complimentary access (unlimited, like paid). */
+  plan: "free" | "monthly" | "yearly" | "comp";
+  /** Effective expiry: trial end (free), subscription end (paid), or comp end. */
   expiresAt: string | null;
   /** May the business take online bookings, plan-wise? */
   active: boolean;

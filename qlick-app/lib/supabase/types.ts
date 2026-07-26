@@ -546,6 +546,7 @@ export type Database = {
           bookings_paused: boolean
           brand_colors: Json
           category_id: string | null
+          comp_until: string | null
           cover_url: string | null
           created_at: string
           currency: string
@@ -580,6 +581,7 @@ export type Database = {
           bookings_paused?: boolean
           brand_colors?: Json
           category_id?: string | null
+          comp_until?: string | null
           cover_url?: string | null
           created_at?: string
           currency?: string
@@ -614,6 +616,7 @@ export type Database = {
           bookings_paused?: boolean
           brand_colors?: Json
           category_id?: string | null
+          comp_until?: string | null
           cover_url?: string | null
           created_at?: string
           currency?: string
@@ -1717,6 +1720,7 @@ export type Database = {
       admin_list_subscriptions: {
         Args: never
         Returns: {
+          comp_until: string
           created_at: string
           days_left: number
           id: string
@@ -1771,6 +1775,10 @@ export type Database = {
       admin_overview_stats: { Args: never; Returns: Json }
       admin_set_business_status: {
         Args: { p_business: string; p_status: string }
+        Returns: undefined
+      }
+      admin_set_comp: {
+        Args: { p_business: string; p_until: string | null }
         Returns: undefined
       }
       admin_set_review_status: {
