@@ -8,6 +8,7 @@ import {
   Star,
   StarHalf,
   AlertTriangle,
+  Flag,
   Eye,
   EyeOff,
   Trash2,
@@ -36,7 +37,13 @@ interface ReviewRow {
   updated_at: string;
 }
 
-type Tab = "all" | "flagged" | "hidden";
+type Tab = "all" | "flagged" | "reported" | "hidden";
+
+interface ReportInfo {
+  count: number;
+  lastType: string;
+  lastNote: string | null;
+}
 
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -80,9 +87,11 @@ function Stars({ rating }: { rating: number }) {
 export function ReviewsTable({
   locale,
   rows,
+  reportsByReview = {},
 }: {
   locale: string;
   rows: ReviewRow[];
+  reportsByReview?: Record<string, ReportInfo>;
 }) {
   const t = useDict().admin.reviews;
   const errs = useDict().admin.errors;
@@ -109,12 +118,24 @@ export function ReviewsTable({
   const counts = {
     all: rows.length,
     flagged: Object.keys(flags).length,
+    reported: rows.filter((r) => reportsByReview[r.id]).length,
     hidden: rows.filter((r) => r.status === "hidden").length,
+  };
+
+  const reportLabel = (info: ReportInfo) => {
+    const typeLabel =
+      t.reportTypes[info.lastType as keyof typeof t.reportTypes] ??
+      info.lastType;
+    const base = t.reportedTooltip
+      .replace("{count}", String(info.count))
+      .replace("{type}", typeLabel);
+    return info.lastNote ? `${base}\n“${info.lastNote}”` : base;
   };
 
   const q = norm(query.trim());
   const filtered = rows.filter((r) => {
     if (tab === "flagged" && !flags[r.id]) return false;
+    if (tab === "reported" && !reportsByReview[r.id]) return false;
     if (tab === "hidden" && r.status !== "hidden") return false;
     if (!q) return true;
     return [r.customer_name, r.customer_email, r.business_name, r.comment]
@@ -139,6 +160,7 @@ export function ReviewsTable({
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "all", label: t.fAll, count: counts.all },
     { key: "flagged", label: t.fFlagged, count: counts.flagged },
+    { key: "reported", label: t.fReported, count: counts.reported },
     { key: "hidden", label: t.fHidden, count: counts.hidden },
   ];
 
@@ -209,6 +231,15 @@ export function ReviewsTable({
                           )}
                         >
                           <AlertTriangle className="size-4 shrink-0 text-warning" />
+                        </span>
+                      )}
+                      {reportsByReview[r.id] && (
+                        <span
+                          className="inline-flex items-center gap-0.5 rounded-full bg-warning/15 px-1.5 py-0.5 text-[10px] font-semibold text-warning"
+                          title={reportLabel(reportsByReview[r.id])}
+                        >
+                          <Flag className="size-3 shrink-0" />
+                          {reportsByReview[r.id].count}
                         </span>
                       )}
                     </div>

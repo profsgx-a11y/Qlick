@@ -17,7 +17,29 @@ export default async function AdminReviewsPage({
   const dict = await getDictionary(locale);
 
   const supabase = await createClient();
-  const { data } = await supabase.rpc("admin_list_reviews");
+  const [{ data }, { data: reports }] = await Promise.all([
+    supabase.rpc("admin_list_reviews"),
+    supabase
+      .from("review_reports")
+      .select("review_id, report_type, note, created_at")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  // Latest report + count per review, so the table can flag reported reviews.
+  const reportsByReview: Record<
+    string,
+    { count: number; lastType: string; lastNote: string | null }
+  > = {};
+  for (const r of reports ?? []) {
+    const existing = reportsByReview[r.review_id];
+    if (existing) existing.count += 1;
+    else
+      reportsByReview[r.review_id] = {
+        count: 1,
+        lastType: r.report_type,
+        lastNote: r.note,
+      };
+  }
 
   return (
     <>
@@ -28,7 +50,11 @@ export default async function AdminReviewsPage({
         userLabel={name || email || ""}
       />
       <div className="p-4 sm:p-6 lg:p-8">
-        <ReviewsTable locale={locale} rows={data ?? []} />
+        <ReviewsTable
+          locale={locale}
+          rows={data ?? []}
+          reportsByReview={reportsByReview}
+        />
       </div>
     </>
   );
