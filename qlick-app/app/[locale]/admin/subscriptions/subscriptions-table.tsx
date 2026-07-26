@@ -11,11 +11,12 @@ import {
   CreditCard,
   Hourglass,
   AlertTriangle,
+  Gift,
   X,
 } from "lucide-react";
 import { useDict } from "@/i18n/provider";
 import { adminErr } from "@/lib/admin-error";
-import { extendTrial } from "./actions";
+import { extendTrial, setComp } from "./actions";
 
 interface SubRow {
   id: string;
@@ -28,6 +29,7 @@ interface SubRow {
   created_at: string;
   trial_bonus_days: number;
   trial_total_days: number;
+  comp_until: string | null;
   sub_state: string;
   days_left: number | null;
   owner_name: string | null;
@@ -44,10 +46,16 @@ const norm = (s: string) =>
 const STATE_ORDER: Record<string, number> = {
   trialing: 0,
   paid: 1,
-  trial_expired: 2,
-  paid_expired: 3,
-  not_published: 4,
+  comp: 2,
+  trial_expired: 3,
+  paid_expired: 4,
+  not_published: 5,
 };
+
+// Postgres 'infinity' (or a far-future date) means the grant has no end date.
+const isIndefinite = (until: string | null) =>
+  !!until &&
+  (until === "infinity" || new Date(until).getUTCFullYear() > 9000);
 
 export function SubscriptionsTable({
   locale,
@@ -63,6 +71,9 @@ export function SubscriptionsTable({
   const [pending, startTransition] = useTransition();
   const [extendFor, setExtendFor] = useState<SubRow | null>(null);
   const [days, setDays] = useState(30);
+  const [compFor, setCompFor] = useState<SubRow | null>(null);
+  const [compMode, setCompMode] = useState<"indefinite" | "until">("indefinite");
+  const [compDate, setCompDate] = useState("");
 
   const summary = useMemo(() => {
     const paid = rows.filter((r) => r.sub_state === "paid");
@@ -107,6 +118,13 @@ export function SubscriptionsTable({
     `${(cents / 100).toFixed(2).replace(/\.00$/, "")} €`;
 
   const planBadge = (r: SubRow) => {
+    if (r.sub_state === "comp")
+      return (
+        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-medium text-success">
+          <Gift className="size-3" />
+          {t.planComp}
+        </span>
+      );
     if (r.plan === "monthly")
       return (
         <span className="inline-flex whitespace-nowrap rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold">
@@ -129,6 +147,7 @@ export function SubscriptionsTable({
   const stateBadge = (r: SubRow) => {
     const map: Record<string, { label: string; cls: string }> = {
       paid: { label: t.statePaid, cls: "bg-success/15 text-success" },
+      comp: { label: t.stateComp, cls: "bg-success/15 text-success" },
       paid_expired: { label: t.statePaidExpired, cls: "bg-danger/15 text-danger" },
       trialing: {
         label: t.stateTrialing,
@@ -151,6 +170,8 @@ export function SubscriptionsTable({
   };
 
   const expiresAt = (r: SubRow): string => {
+    if (r.sub_state === "comp")
+      return isIndefinite(r.comp_until) ? t.compIndefinite : fmtDate(r.comp_until);
     if (r.sub_state === "paid" || r.sub_state === "paid_expired")
       return fmtDate(r.plan_expires_at);
     if (!r.published_at) return "—";
@@ -172,6 +193,40 @@ export function SubscriptionsTable({
       if (!res.ok) alert(adminErr(errs, res.error, errs.generic));
       else router.refresh();
     });
+
+  const openComp = (r: SubRow) => {
+    setCompMode("indefinite");
+    // Default the date picker to a month out for convenience.
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    setCompDate(d.toISOString().slice(0, 10));
+    setCompFor(r);
+  };
+
+  const runComp = (businessId: string, until: string | null) =>
+    startTransition(async () => {
+      const res = await setComp(locale, businessId, until);
+      setCompFor(null);
+      if (!res.ok) alert(adminErr(errs, res.error, errs.generic));
+      else router.refresh();
+    });
+
+  const onGrant = () => {
+    if (!compFor) return;
+    if (compMode === "until") {
+      if (!compDate) return;
+      // End of the chosen local day, so the grant covers that whole date.
+      const until = new Date(`${compDate}T23:59:59`).toISOString();
+      runComp(compFor.id, until);
+    } else {
+      runComp(compFor.id, "infinity");
+    }
+  };
+
+  const onRevoke = (r: SubRow) => {
+    if (!confirm(t.revokeConfirm.replace("{name}", r.name))) return;
+    runComp(r.id, null);
+  };
 
   const cards = [
     {
@@ -308,7 +363,30 @@ export function SubscriptionsTable({
                     {r.trial_bonus_days > 0 ? `+${r.trial_bonus_days}` : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-1">
+                      {r.sub_state === "comp" ? (
+                        <button
+                          type="button"
+                          onClick={() => onRevoke(r)}
+                          disabled={pending}
+                          title={t.actionRevokeComp}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50"
+                        >
+                          <X className="size-4" />
+                          {t.actionRevokeComp}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openComp(r)}
+                          disabled={pending}
+                          title={t.actionGrantComp}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+                        >
+                          <Gift className="size-4" />
+                          {t.actionGrantComp}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openExtend(r)}
@@ -317,7 +395,7 @@ export function SubscriptionsTable({
                         className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
                       >
                         <CalendarPlus className="size-4" />
-                        {t.actionExtend}
+                        <span className="hidden lg:inline">{t.actionExtend}</span>
                       </button>
                     </div>
                   </td>
@@ -397,6 +475,82 @@ export function SubscriptionsTable({
                 className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-gold/90 disabled:opacity-40"
               >
                 {t.extendConfirm}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Grant complimentary access dialog */}
+      {compFor && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/50"
+            onClick={() => !pending && setCompFor(null)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[70] w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-surface p-5 shadow-2xl">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <h3 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+                <Gift className="size-4 text-success" />
+                {t.grantTitle}
+              </h3>
+              <button
+                onClick={() => setCompFor(null)}
+                disabled={pending}
+                aria-label={t.grantCancel}
+                className="text-muted hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <p className="text-sm leading-relaxed text-muted">
+              {t.grantHint.replace("{name}", compFor.name)}
+            </p>
+            <div className="mt-4 space-y-2">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border p-3 text-sm has-[:checked]:border-gold/50 has-[:checked]:bg-gold/10">
+                <input
+                  type="radio"
+                  name="compMode"
+                  checked={compMode === "indefinite"}
+                  onChange={() => setCompMode("indefinite")}
+                  className="accent-gold"
+                />
+                <span className="text-foreground">{t.grantIndefinite}</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border p-3 text-sm has-[:checked]:border-gold/50 has-[:checked]:bg-gold/10">
+                <input
+                  type="radio"
+                  name="compMode"
+                  checked={compMode === "until"}
+                  onChange={() => setCompMode("until")}
+                  className="accent-gold"
+                />
+                <span className="text-foreground">{t.grantUntil}</span>
+              </label>
+              {compMode === "until" && (
+                <input
+                  type="date"
+                  value={compDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setCompDate(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-border bg-surface-2 px-3 text-sm text-foreground focus:border-gold focus:outline-none focus:ring-2 focus:ring-gold/30"
+                />
+              )}
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setCompFor(null)}
+                disabled={pending}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-40"
+              >
+                {t.grantCancel}
+              </button>
+              <button
+                onClick={onGrant}
+                disabled={pending || (compMode === "until" && !compDate)}
+                className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-gold/90 disabled:opacity-40"
+              >
+                {t.grantConfirm}
               </button>
             </div>
           </div>

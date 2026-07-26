@@ -20,6 +20,9 @@ export function SubscriptionBanner({
 }) {
   const t = useDict().dashboard.subscription;
 
+  // Complimentary (admin-granted) access never nags the owner.
+  if (state.plan === "comp") return null;
+
   const expiringSoon =
     state.active && state.daysLeft !== null && state.daysLeft <= 5;
   if (state.active && !expiringSoon) return null;
