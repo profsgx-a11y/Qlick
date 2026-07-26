@@ -17,21 +17,30 @@ export default async function ReviewsPage({
   const { business, fullName, email } = await requireBusiness(locale);
   const supabase = await createClient();
 
-  const [{ data: reviews }, { data: staff }] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select(
-        "id, staff_id, staff_name, customer_name, rating, comment, business_reply, status, created_at",
-      )
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("staff")
-      .select("id, name")
-      .eq("business_id", business.id)
-      .order("order_index")
-      .order("created_at"),
-  ]);
+  const [{ data: reviews }, { data: staff }, { data: reports }] =
+    await Promise.all([
+      supabase
+        .from("reviews")
+        .select(
+          "id, staff_id, staff_name, customer_name, rating, comment, business_reply, status, created_at",
+        )
+        .eq("business_id", business.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("staff")
+        .select("id, name")
+        .eq("business_id", business.id)
+        .order("order_index")
+        .order("created_at"),
+      supabase
+        .from("review_reports")
+        .select("review_id")
+        .eq("business_id", business.id),
+    ]);
+
+  const reportedIds = [
+    ...new Set((reports ?? []).map((r) => r.review_id)),
+  ];
 
   return (
     <>
@@ -46,6 +55,7 @@ export default async function ReviewsPage({
           locale={locale}
           initialReviews={(reviews ?? []) as ReviewRow[]}
           staff={staff ?? []}
+          reportedIds={reportedIds}
         />
       </div>
     </>
