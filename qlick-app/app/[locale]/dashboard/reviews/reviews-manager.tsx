@@ -175,6 +175,10 @@ export function ReviewsManager({
                 className={cn(
                   "group py-4",
                   r.status === "hidden" && "opacity-60",
+                  // Lift the card above the following ones while its report
+                  // dropdown is open, so the menu isn't covered by the next
+                  // card (Card's transform traps the menu's own z-index).
+                  reportingId === r.id && "relative z-30",
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
