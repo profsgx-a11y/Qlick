@@ -52,6 +52,30 @@ interface ConnectionSecretRow {
 }
 
 /**
+ * Loads a connection ONLY when it belongs to `businessId`, otherwise null.
+ *
+ * Everything below runs on the service-role client, which bypasses RLS — so a
+ * raw `connectionId` from a form post would otherwise reach any shop's Google
+ * tokens. Callers do check ownership before they get here, but that check lives
+ * in the action layer and a future entry point could forget it. Taking the
+ * business id as a required argument makes the guard impossible to skip: there
+ * is no way to load a connection without saying which shop it must belong to.
+ */
+async function loadOwnedConnection(
+  admin: Admin,
+  connectionId: string,
+  businessId: string,
+): Promise<ConnectionSecretRow | null> {
+  const { data } = await admin
+    .from("calendar_connections")
+    .select(CONNECTION_COLS_SECRET)
+    .eq("id", connectionId)
+    .eq("business_id", businessId)
+    .maybeSingle();
+  return (data as ConnectionSecretRow | null) ?? null;
+}
+
+/**
  * Valid access token for a connection — decrypts the cached one when still
  * fresh, otherwise refreshes and stores it. Returns null (and marks the
  * connection) when Google rejected the refresh token (user revoked access).
@@ -528,22 +552,15 @@ export async function syncBusyForBusiness(
 /** Live calendar list for the picker in settings. */
 export async function listCalendarsForConnection(
   connectionId: string,
+  businessId: string,
 ): Promise<
   | { ok: true; calendars: { id: string; summary: string; primary: boolean }[] }
   | { ok: false; error: "reconnect_required" | "api_error" }
 > {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select(CONNECTION_COLS_SECRET)
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return { ok: false, error: "api_error" };
-  const token = await accessTokenFor(
-    admin,
-    data as ConnectionSecretRow,
-    new Map(),
-  );
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return { ok: false, error: "api_error" };
+  const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return { ok: false, error: "reconnect_required" };
   try {
     return { ok: true, calendars: await listCalendars(token) };
@@ -569,19 +586,15 @@ export interface ConnectionSettingsInput {
  */
 export async function applyConnectionSettings(
   connectionId: string,
+  businessId: string,
   input: ConnectionSettingsInput,
 ): Promise<
   | { ok: true; repushed: SyncCounts | null; busy: BusySyncResult[] | null }
   | { ok: false; error: "staff_taken" | "save_failed" }
 > {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select(CONNECTION_COLS_SECRET)
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return { ok: false, error: "save_failed" };
-  const conn = data as ConnectionSecretRow;
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return { ok: false, error: "save_failed" };
 
   const remap =
     conn.calendar_id !== input.calendarId || conn.staff_id !== input.staffId;
@@ -672,18 +685,14 @@ export async function applyConnectionSettings(
  */
 export async function listImportableEventsForConnection(
   connectionId: string,
+  businessId: string,
 ): Promise<
   | { ok: true; events: ImportableEvent[] }
   | { ok: false; error: "reconnect_required" | "api_error" }
 > {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select(CONNECTION_COLS_SECRET)
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return { ok: false, error: "api_error" };
-  const conn = data as ConnectionSecretRow;
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return { ok: false, error: "api_error" };
 
   const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return { ok: false, error: "reconnect_required" };
@@ -718,17 +727,13 @@ export async function listImportableEventsForConnection(
  */
 export async function markEventsAdopted(
   connectionId: string,
+  businessId: string,
   pairs: { eventId: string; bookingId: string; businessId: string }[],
 ): Promise<void> {
   if (pairs.length === 0) return;
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select(CONNECTION_COLS_SECRET)
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return;
-  const conn = data as ConnectionSecretRow;
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return;
   const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return;
 
@@ -760,7 +765,7 @@ export async function countUnregisteredEvents(
     .eq("business_id", businessId);
   let total = 0;
   for (const c of conns ?? []) {
-    const res = await listImportableEventsForConnection(c.id);
+    const res = await listImportableEventsForConnection(c.id, businessId);
     if (res.ok) total += res.events.length;
   }
   return total;
@@ -773,18 +778,14 @@ export async function countUnregisteredEvents(
  */
 export async function ignoreImportableEvents(
   connectionId: string,
+  businessId: string,
   eventIds: string[],
 ): Promise<void> {
   const ids = [...new Set(eventIds.filter(Boolean))];
   if (ids.length === 0) return;
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select(CONNECTION_COLS_SECRET)
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return;
-  const conn = data as ConnectionSecretRow;
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return;
   const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return;
 
@@ -804,18 +805,23 @@ export async function ignoreImportableEvents(
  * row (busy events cascade; bookings keep gcal_event_id so a later
  * reconnect of the same account re-adopts the events).
  */
-export async function removeConnection(connectionId: string): Promise<void> {
+export async function removeConnection(
+  connectionId: string,
+  businessId: string,
+): Promise<void> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("calendar_connections")
-    .select("id, refresh_token_enc")
-    .eq("id", connectionId)
-    .maybeSingle();
-  if (!data) return;
+  const conn = await loadOwnedConnection(admin, connectionId, businessId);
+  if (!conn) return;
   try {
-    await revokeToken(decryptToken(data.refresh_token_enc));
+    await revokeToken(decryptToken(conn.refresh_token_enc));
   } catch {
     // revoke is best-effort
   }
-  await admin.from("calendar_connections").delete().eq("id", connectionId);
+  // Scope the delete too, not just the lookup — this is the one destructive
+  // statement in the file and it should never rely on an earlier check alone.
+  await admin
+    .from("calendar_connections")
+    .delete()
+    .eq("id", connectionId)
+    .eq("business_id", businessId);
 }

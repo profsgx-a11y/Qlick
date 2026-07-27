@@ -67,7 +67,7 @@ export async function getGoogleCalendars(
   const ctx = await requireConnection(connectionId);
   if ("error" in ctx) return { ok: false, error: ctx.error };
 
-  const res = await listCalendarsForConnection(connectionId);
+  const res = await listCalendarsForConnection(connectionId, ctx.bizId);
   if (!res.ok) {
     return {
       ok: false,
@@ -115,7 +115,7 @@ export async function updateGoogleConnection(
   }
 
   const calendarId = input.calendarId.trim() || "primary";
-  const res = await applyConnectionSettings(connectionId, {
+  const res = await applyConnectionSettings(connectionId, ctx.bizId, {
     staffId,
     calendarId,
     calendarSummary: input.calendarSummary?.trim() || null,
@@ -191,7 +191,7 @@ export async function disconnectGoogle(
   const ctx = await requireConnection(connectionId);
   if ("error" in ctx) return { ok: false, error: ctx.error };
 
-  await removeConnection(connectionId);
+  await removeConnection(connectionId, ctx.bizId);
   revalidateDash(locale);
   return { ok: true };
 }

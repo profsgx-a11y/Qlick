@@ -12,13 +12,26 @@ export async function GET(request: NextRequest) {
   }
 
   const sp = request.nextUrl.searchParams;
-  const lat = sp.get("lat")?.trim();
-  const lng = sp.get("lng")?.trim();
-  const lang = sp.get("lang") ?? "el";
+  const lat = Number(sp.get("lat")?.trim());
+  const lng = Number(sp.get("lng")?.trim());
+  // Only ever accept real coordinates, and build the query with URLSearchParams
+  // rather than string interpolation — otherwise a crafted `lat` smuggles extra
+  // parameters into the Nominatim request we make on the caller's behalf.
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lng) > 180
+  ) {
+    return NextResponse.json({ label: "" });
+  }
+  const lang = sp.get("lang") === "en" ? "en" : "el";
 
-  if (!lat || !lng) return NextResponse.json({ label: "" });
-
-  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=${lang}`;
+  const url = new URL("https://nominatim.openstreetmap.org/reverse");
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lng));
+  url.searchParams.set("format", "json");
+  url.searchParams.set("accept-language", lang);
 
   try {
     const res = await fetch(url, {
@@ -26,6 +39,9 @@ export async function GET(request: NextRequest) {
         "User-Agent": "Qlick/1.0 (booking platform; hello@qlick.gr)",
         Referer: "https://qlick.gr",
       },
+      // Same-spot lookups repeat a lot while dragging the map pin; be kind to
+      // Nominatim (and don't let a burst get our server IP blocked).
+      next: { revalidate: 86400 },
     });
     if (!res.ok) return NextResponse.json({ label: "" });
 
