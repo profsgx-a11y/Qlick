@@ -7,6 +7,12 @@ import { gcalConfigured } from "@/lib/google/calendar";
 import { hasLocale, getDictionary } from "@/i18n/config";
 import { BookingsList, type BookingRow } from "./bookings-list";
 
+
+// A catch-up sync can push a large backlog to Google, and throttling adds
+// backoff waits on top. Give the segment room so the run finishes instead of
+// being cut off (lib/google/sync.ts stops itself at 45s regardless).
+export const maxDuration = 60;
+
 export default async function BookingsPage({
   params,
 }: {

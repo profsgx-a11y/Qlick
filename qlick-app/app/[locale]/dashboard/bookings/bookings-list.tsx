@@ -70,6 +70,18 @@ export function BookingsList({ locale, timeZone, initial, hasGcal }: Props) {
         setTimeout(() => setGcalMsg(null), 6000);
         return;
       }
+      // Some appointments didn't make it (Google throttled past our retries).
+      // Say so instead of reporting a clean success — an owner who trusts a
+      // silent "synced" would see false gaps in their calendar.
+      if ((res.failed ?? 0) > 0) {
+        setGcalMsg(
+          gcal.syncNowPartial
+            .replace("{pushed}", String(res.pushed ?? 0))
+            .replace("{failed}", String(res.failed ?? 0)),
+        );
+        setTimeout(() => setGcalMsg(null), 10000);
+        return;
+      }
       // Google events not yet in Qlick → send the owner to review/import them.
       if ((res.unregistered ?? 0) > 0) {
         router.push(`/${locale}/dashboard/bookings/google-import?prompt=1`);

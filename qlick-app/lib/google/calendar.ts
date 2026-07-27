@@ -69,6 +69,28 @@ export class GoogleApiError extends Error {
   }
 }
 
+/**
+ * Google throttles per-user writes hard: pushing a backlog of appointments
+ * trips "Rate Limit Exceeded" (403 rateLimitExceeded / 429) within seconds.
+ * Those are transient and Google's own guidance is exponential backoff, so
+ * treat them — plus 5xx — as retryable rather than losing the appointment.
+ */
+function isRetryable(status: number, reason: string): boolean {
+  if (status === 429 || status >= 500) return true;
+  return (
+    status === 403 &&
+    (reason === "rateLimitExceeded" ||
+      reason === "userRateLimitExceeded" ||
+      reason === "backendError")
+  );
+}
+
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 interface TokenResponse {
   access_token: string;
   expires_in: number;
@@ -173,26 +195,40 @@ async function gcalFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (res.status === 204) return undefined as T;
-  const data = (await res.json().catch(() => ({}))) as T & {
-    error?: { message?: string };
-  };
-  if (!res.ok) {
+  // attempt 0 is the real call; the rest are backoff retries for throttling.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+    if (res.status === 204) return undefined as T;
+    const data = (await res.json().catch(() => ({}))) as T & {
+      error?: { message?: string; errors?: { reason?: string }[] };
+    };
+    if (res.ok) return data;
+
+    const reason = data.error?.errors?.[0]?.reason ?? "";
+    if (isRetryable(res.status, reason) && attempt < RETRY_DELAYS_MS.length) {
+      // Jitter so parallel workers don't all wake up and retry in lockstep.
+      const base = RETRY_DELAYS_MS[attempt]!;
+      await sleep(base + Math.floor(Math.random() * 250));
+      continue;
+    }
+
     throw new GoogleApiError(
       data.error?.message || `Google Calendar API ${res.status}`,
       res.status,
-      res.status === 401 ? "unauthorized" : "api_error",
+      res.status === 401
+        ? "unauthorized"
+        : isRetryable(res.status, reason)
+          ? "rate_limited"
+          : "api_error",
     );
   }
-  return data;
 }
 
 export interface GcalCalendar {

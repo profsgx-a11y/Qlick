@@ -142,6 +142,25 @@ async function inPool<T>(
   );
 }
 
+/**
+ * Parallel writers against Google. Kept low on purpose: Google throttles
+ * per-user writes, and four workers pushing a backlog tripped "Rate Limit
+ * Exceeded" on real data. Two workers plus the backoff in gcalFetch keeps a
+ * large catch-up sync inside the quota.
+ */
+const WRITE_CONCURRENCY = 2;
+
+/**
+ * How long one sync run may spend before it stops starting new work.
+ *
+ * Backoff makes a heavily throttled run slow — worst case every appointment
+ * burns its three retries — and the serverless function would be killed
+ * mid-flight, leaving no result at all. Stopping ourselves first means the
+ * bookings we did push are recorded and the remainder come back as `failed`,
+ * which the dashboard now reports so the owner can run it again.
+ */
+const SYNC_BUDGET_MS = 45_000;
+
 export interface SyncCounts {
   created: number;
   updated: number;
@@ -209,9 +228,16 @@ export async function syncBookingsToGoogle(
   }
 
   const tokenCache = new Map<string, string | null>();
+  const deadline = Date.now() + SYNC_BUDGET_MS;
 
-  await inPool(bookings, 4, async (booking) => {
+  await inPool(bookings, WRITE_CONCURRENCY, async (booking) => {
     try {
+      // Out of budget: leave the rest unsynced and countable rather than
+      // being killed mid-write with nothing reported.
+      if (Date.now() > deadline) {
+        counts.failed++;
+        return;
+      }
       const bizConns = connsByBusiness.get(booking.business_id) ?? [];
       if (bizConns.length === 0) {
         counts.skipped++;
@@ -614,7 +640,7 @@ export async function applyConnectionSettings(
     if (future.length > 0) {
       const token = await accessTokenFor(admin, conn, new Map());
       if (token) {
-        await inPool(future, 4, async (r) => {
+        await inPool(future, WRITE_CONCURRENCY, async (r) => {
           try {
             await deleteEvent(token, conn.calendar_id, r.gcal_event_id as string);
           } catch (e) {
@@ -737,7 +763,7 @@ export async function markEventsAdopted(
   const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return;
 
-  await inPool(pairs, 4, async (p) => {
+  await inPool(pairs, WRITE_CONCURRENCY, async (p) => {
     try {
       await patchEvent(token, conn.calendar_id, p.eventId, {
         extendedProperties: {
@@ -789,7 +815,7 @@ export async function ignoreImportableEvents(
   const token = await accessTokenFor(admin, conn, new Map());
   if (!token) return;
 
-  await inPool(ids, 4, async (eventId) => {
+  await inPool(ids, WRITE_CONCURRENCY, async (eventId) => {
     try {
       await patchEvent(token, conn.calendar_id, eventId, {
         extendedProperties: { private: { qlickIgnored: "1" } },
