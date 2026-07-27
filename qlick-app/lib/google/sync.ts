@@ -425,27 +425,44 @@ export async function pushAllFutureBookings(
   const admin = createAdminClient();
   const nowIso = new Date().toISOString();
 
-  const [{ data: missing }, { data: staleCancelled }] = await Promise.all([
-    admin
-      .from("bookings")
-      .select("id")
-      .eq("business_id", businessId)
-      .in("status", ["pending", "confirmed"])
-      .gt("ends_at", nowIso)
-      .is("gcal_event_id", null)
-      .limit(1000),
-    admin
-      .from("bookings")
-      .select("id")
-      .eq("business_id", businessId)
-      .eq("status", "cancelled")
-      .not("gcal_event_id", "is", null)
-      .limit(1000),
-  ]);
+  const [{ data: missing }, { data: staleCancelled }, { data: stranded }] =
+    await Promise.all([
+      admin
+        .from("bookings")
+        .select("id")
+        .eq("business_id", businessId)
+        .in("status", ["pending", "confirmed"])
+        .gt("ends_at", nowIso)
+        .is("gcal_event_id", null)
+        .limit(1000),
+      admin
+        .from("bookings")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("status", "cancelled")
+        .not("gcal_event_id", "is", null)
+        .limit(1000),
+      // Stranded: an event id survives from a connection that has since been
+      // removed (disconnect clears the link but keeps the id, so reconnecting
+      // the same account can re-adopt the event). Without this they are in no
+      // bucket at all — not "missing", because the id is set — so a reconnect
+      // left them permanently absent from the calendar. syncBookingsToGoogle
+      // patches the event and re-creates it if the owner deleted it by hand.
+      admin
+        .from("bookings")
+        .select("id")
+        .eq("business_id", businessId)
+        .in("status", ["pending", "confirmed"])
+        .gt("ends_at", nowIso)
+        .not("gcal_event_id", "is", null)
+        .is("gcal_connection_id", null)
+        .limit(1000),
+    ]);
 
   const ids = [
     ...(missing ?? []).map((r) => r.id),
     ...(staleCancelled ?? []).map((r) => r.id),
+    ...(stranded ?? []).map((r) => r.id),
   ];
   return syncBookingsToGoogle(ids);
 }
