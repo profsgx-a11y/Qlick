@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       // Honor a deep-link next (e.g. returning to a booking flow); otherwise
-      // route to the right home based on the account type.
-      let destination = next && next.startsWith("/") ? next : null;
+      // route to the right home based on the account type. A leading "//" or
+      // "/\" is a protocol-relative URL, not a local path — reject those so
+      // `next` can never bounce a freshly signed-in user off-site.
+      let destination =
+        next && /^\/(?![/\\])/.test(next) ? next : null;
       if (!destination && data.user) {
         destination = await userHome(supabase, locale, data.user.id);
       }

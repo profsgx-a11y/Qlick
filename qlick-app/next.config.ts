@@ -28,6 +28,38 @@ const nextConfig: NextConfig = {
     // high-fidelity 95 for those (75 stays for everything else).
     qualities: [75, 95],
   },
+  // Don't advertise the framework/version to scanners.
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Nobody may frame us — the dashboard has one-click destructive
+          // actions, so clickjacking is the risk. `frame-ancestors` is the
+          // modern control; X-Frame-Options covers older browsers.
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          {
+            // Deliberately narrow: `frame-ancestors`/`object-src`/`base-uri`
+            // are safe to lock down without a nonce pipeline. A full
+            // `script-src` policy needs per-request nonces on Next's inline
+            // bootstrap — worth doing later, but it must not be guessed at.
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            // Geolocation stays on: the search page and the shop address
+            // picker both ask for the visitor's position.
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), payment=(), geolocation=(self)",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
