@@ -50,7 +50,9 @@ export function PhoneDemo({
       ref={rootRef}
       className="relative mx-auto w-[300px] rounded-[44px] border border-border-strong bg-surface p-2.5 shadow-2xl shadow-black/70 ring-1 ring-white/5 sm:w-[320px]"
     >
-      <div className="relative h-[540px] overflow-hidden rounded-[34px] bg-background sm:h-[578px]">
+      {/* Match the real screenshot ratio so the full screen shows (the
+          confirm-step CTA was being cropped by a fixed-height frame). */}
+      <div className="relative aspect-[343/745] w-full overflow-hidden rounded-[34px] bg-background">
         {frames.map((src, idx) => (
           <motion.img
             // eslint-disable-next-line @next/next/no-img-element
@@ -61,7 +63,7 @@ export function PhoneDemo({
             initial={false}
             animate={{ opacity: idx === i ? 1 : 0 }}
             transition={{ duration: 0.6, ease: "easeInOut" }}
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full object-contain"
             draggable={false}
           />
         ))}
