@@ -2,8 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Limits enforced on the free (trial) plan. Paid plans are unlimited. */
 export const FREE_LIMITS = {
-  staff: 3,
-  services: 3,
+  staff: 5,
+  services: 12,
 } as const;
 
 export interface PlanState {
