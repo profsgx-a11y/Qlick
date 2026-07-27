@@ -585,8 +585,8 @@
         "note": "No card. When it ends it stops on its own — no charge.",
         "features": [
           "Unlimited bookings",
-          "Up to 3 staff",
-          "Up to 3 services",
+          "Up to 5 staff",
+          "Up to 12 services",
           "QR poster editor (PDF & PNG)",
           "Calendar, reports & reviews"
         ],
@@ -1791,8 +1791,8 @@
       "invalid_price": "Invalid price.",
       "enter_person_name": "Enter the person's name.",
       "invalid_interval": "Invalid time range.",
-      "staff_limit_free": "On the free plan you can have up to 3 active staff members. Upgrade to Monthly or Yearly for unlimited.",
-      "service_limit_free": "On the free plan you can have up to 3 active services. Upgrade to Monthly or Yearly for unlimited.",
+      "staff_limit_free": "On the free plan you can have up to 5 active staff members. Upgrade to Monthly or Yearly for unlimited.",
+      "service_limit_free": "On the free plan you can have up to 12 active services. Upgrade to Monthly or Yearly for unlimited.",
       "need_name_or_phone": "Enter a name or phone number.",
       "not_found": "Not found.",
       "cannot_delete_account": "Customers with an account can't be deleted.",
