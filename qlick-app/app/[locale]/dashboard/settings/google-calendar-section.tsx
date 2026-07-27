@@ -21,6 +21,7 @@ import { dashErr } from "@/lib/dash-error";
 import {
   disconnectGoogle,
   getGoogleCalendars,
+  pushAllFutureToGoogle,
   updateGoogleConnection,
 } from "./google-actions";
 
@@ -280,6 +281,33 @@ function ConnectionCard({
       router.refresh();
     });
 
+  /**
+   * Manual catch-up push. Google throttles a large backlog, so a run can come
+   * back partly done — report the numbers instead of a bare "synced", or the
+   * owner trusts a calendar that is quietly missing appointments.
+   */
+  const pushAll = () =>
+    startWorking(async () => {
+      setErr(null);
+      setMsg(null);
+      const res = await pushAllFutureToGoogle(locale);
+      if (!res.ok) {
+        setErr(dashErr(dict.errors, res.error, t.saveFailed));
+        return;
+      }
+      const c = res.counts;
+      const pushed = c ? c.created + c.updated + c.deleted : 0;
+      const failed = c?.failed ?? 0;
+      setMsg(
+        failed > 0
+          ? t.pushAllPartial
+              .replace("{n}", String(pushed))
+              .replace("{failed}", String(failed))
+          : t.pushAllDone.replace("{n}", String(pushed)),
+      );
+      router.refresh();
+    });
+
   const unlink = () =>
     startWorking(async () => {
       setErr(null);
@@ -383,10 +411,28 @@ function ConnectionCard({
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        {dirty && (
+        {dirty ? (
           <Button onClick={save} disabled={saving || working}>
             {saving ? t.saving : t.save}
           </Button>
+        ) : (
+          // Only once the choice is actually saved — syncing while the calendar
+          // picker holds unsaved changes would push to the old calendar.
+          !needsReconnect && (
+            <span className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={pushAll}
+                disabled={working || saving || !pushEnabled}
+              >
+                <RefreshCw className={`size-4 ${working ? "animate-spin" : ""}`} />
+                {working ? t.syncNowWorking : t.pushAllCta}
+              </Button>
+              {!pushEnabled && (
+                <span className="text-xs text-muted">{t.pushDisabledHint}</span>
+              )}
+            </span>
+          )
         )}
         <div className="ml-auto">
           {!confirmingUnlink ? (
