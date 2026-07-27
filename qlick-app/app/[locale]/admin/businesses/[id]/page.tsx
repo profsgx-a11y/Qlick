@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/admin";
 import { getDictionary, hasLocale } from "@/i18n/config";
 import { highlightParts, scanText } from "@/lib/moderation";
+import { safeExternalUrl } from "@/lib/utils";
 import { ReviewActions } from "./review-actions";
 
 interface Details {
@@ -250,17 +251,28 @@ export default async function AdminBusinessReviewPage({
                 <span className="flex flex-wrap gap-x-3 gap-y-1">
                   {[b.website, b.facebook_url, b.instagram_url]
                     .filter((u): u is string => !!u)
-                    .map((u) => (
-                      <a
-                        key={u}
-                        href={u}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gold hover:underline"
-                      >
-                        {u.replace(/^https?:\/\//, "")}
-                      </a>
-                    ))}
+                    .map((u) => {
+                      // Owner-controlled text: anything that isn't http(s) is
+                      // shown as plain text (still visible for moderation) and
+                      // never turned into a clickable href.
+                      const href = safeExternalUrl(u);
+                      const label = u.replace(/^https?:\/\//, "");
+                      return href ? (
+                        <a
+                          key={u}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gold hover:underline"
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <span key={u} className="text-muted-foreground line-through">
+                          {label}
+                        </span>
+                      );
+                    })}
                 </span>
               ) : null,
             )}
