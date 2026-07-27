@@ -1385,6 +1385,7 @@
       "manageWarning": "Important: Always manage your appointments inside Qlick, not in Google Calendar. Appointments are pushed to Google automatically, but the sync can have a short delay, so Google may not always be up to date. Changes you make directly in Google are not sent back to Qlick.",
       "syncNowCta": "Sync Google",
       "syncNowWorking": "Syncing…",
+      "syncNowPartial": "Synced {pushed} · {failed} didn't go through (Google throttled the requests). Try again shortly.",
       "syncNowDone": "Synced · {pushed} appointments → Google",
       "syncNowFailed": "Sync didn't finish. Try again.",
       "connectedPopupTitle": "Connected successfully! 🎉",

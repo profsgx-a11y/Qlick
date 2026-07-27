@@ -160,6 +160,8 @@ export interface SyncNowResult {
   error?: string;
   /** created + updated + deleted events pushed to Google. */
   pushed?: number;
+  /** Appointments Google refused (throttling that outlasted the retries). */
+  failed?: number;
   /** upcoming Google events not yet in Qlick (and not dismissed). */
   unregistered?: number;
 }
@@ -180,6 +182,7 @@ export async function syncGoogleNow(locale: string): Promise<SyncNowResult> {
   return {
     ok: true,
     pushed: counts.created + counts.updated + counts.deleted,
+    failed: counts.failed,
     unregistered,
   };
 }
