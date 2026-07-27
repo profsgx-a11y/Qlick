@@ -193,7 +193,7 @@ export async function listGoogleImportEvents(
   const ctx = await requireConnection(connectionId);
   if ("error" in ctx) return { ok: false, error: ctx.error };
 
-  const res = await listImportableEventsForConnection(connectionId);
+  const res = await listImportableEventsForConnection(connectionId, ctx.bizId);
   if (!res.ok) {
     return {
       ok: false,
@@ -269,7 +269,7 @@ export async function importGoogleEvents(
   const svcById = new Map((svcRows ?? []).map((s) => [s.id, s]));
   const staffOk = new Set((staffRows ?? []).map((s) => s.id));
 
-  const listed = await listImportableEventsForConnection(connectionId);
+  const listed = await listImportableEventsForConnection(connectionId, ctx.bizId);
   if (!listed.ok) {
     return {
       ok: false,
@@ -340,7 +340,7 @@ export async function importGoogleEvents(
     });
   }
 
-  await markEventsAdopted(connectionId, adopted);
+  await markEventsAdopted(connectionId, ctx.bizId, adopted);
 
   // Clear any mirrored busy blocks for the events we just imported — the
   // booking now occupies the slot, so the "Google · Busy" overlay would be a
@@ -376,6 +376,6 @@ export async function ignoreGoogleEvents(
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await requireConnection(connectionId);
   if ("error" in ctx) return { ok: false, error: ctx.error };
-  await ignoreImportableEvents(connectionId, eventIds);
+  await ignoreImportableEvents(connectionId, ctx.bizId, eventIds);
   return { ok: true };
 }
