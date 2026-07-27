@@ -21,6 +21,13 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
     },
   },
+  images: {
+    // Next 16 restricts the allowed `quality` values to `[75]` by default and
+    // silently coerces anything else down to it. Our marketing screenshots are
+    // dense 1920×1080 UI captures with tiny text, so 75 looks blurry — allow a
+    // high-fidelity 95 for those (75 stays for everything else).
+    qualities: [75, 95],
+  },
 };
 
 export default nextConfig;

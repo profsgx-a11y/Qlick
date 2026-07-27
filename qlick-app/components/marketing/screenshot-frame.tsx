@@ -26,8 +26,9 @@ export function BrowserShot({ src, width, height, alt }: ShotProps) {
           width={width}
           height={height}
           alt={alt}
+          quality={95}
           className="w-full"
-          sizes="(min-width: 1024px) 40rem, 100vw"
+          sizes="(min-width: 1024px) 46vw, 100vw"
         />
       </div>
     </div>
@@ -48,6 +49,7 @@ export function PhoneShot({ src, width, height, alt }: ShotProps) {
           width={width}
           height={height}
           alt={alt}
+          quality={95}
           className="w-full"
           sizes="300px"
         />
