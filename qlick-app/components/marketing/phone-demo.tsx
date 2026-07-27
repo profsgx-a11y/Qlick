@@ -16,15 +16,21 @@ export interface PhoneDemoStrings {
 /**
  * A looping, self-playing preview of the *real* booking flow inside a phone
  * frame. These are actual screenshots of the live /b/[slug]/book journey
- * (service → day & time → staff → confirm → booked), cross-fading so
- * visitors see the genuine product rather than a stylised mock.
+ * (storefront → service → day & time → staff → confirm → booked), cross-fading
+ * so visitors see the genuine product rather than a stylised mock. Frames are
+ * locale-specific and passed in from the server page.
  */
-const FRAMES = ["/2.png", "/3.png", "/4.png", "/5.png", "/6.png"];
-// services → day & time → staff → confirm → booked.
-// Linger a touch on the final confirmation screen.
-const DELAYS = [2600, 2600, 2400, 2600, 3400];
+// storefront → service → day & time → staff → confirm → booked.
+// Linger a touch on the final "booked" screen.
+const DELAYS = [3000, 2600, 2600, 2400, 2800, 3600];
 
-export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
+export function PhoneDemo({
+  s,
+  frames,
+}: {
+  s: PhoneDemoStrings;
+  frames: string[];
+}) {
   const reduce = useReducedMotion();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { amount: 0.4 });
@@ -32,9 +38,12 @@ export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
 
   React.useEffect(() => {
     if (reduce || !inView) return;
-    const t = setTimeout(() => setI((p) => (p + 1) % FRAMES.length), DELAYS[i]);
+    const t = setTimeout(
+      () => setI((p) => (p + 1) % frames.length),
+      DELAYS[i] ?? 2800,
+    );
     return () => clearTimeout(t);
-  }, [i, reduce, inView]);
+  }, [i, reduce, inView, frames.length]);
 
   return (
     <div
@@ -42,7 +51,7 @@ export function PhoneDemo({ s }: { s: PhoneDemoStrings }) {
       className="relative mx-auto w-[300px] rounded-[44px] border border-border-strong bg-surface p-2.5 shadow-2xl shadow-black/70 ring-1 ring-white/5 sm:w-[320px]"
     >
       <div className="relative h-[540px] overflow-hidden rounded-[34px] bg-background sm:h-[578px]">
-        {FRAMES.map((src, idx) => (
+        {frames.map((src, idx) => (
           <motion.img
             // eslint-disable-next-line @next/next/no-img-element
             key={src}

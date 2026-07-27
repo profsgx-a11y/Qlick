@@ -41,20 +41,25 @@ export async function generateMetadata({
   };
 }
 
-// Real product screenshots (public/tour), one per demo.sections entry, in order.
+// Real product screenshots, one per tour.sections entry, in order.
+// Files live per-locale under public/tour/{el,en}/ so EN visitors see the
+// English UI and EL visitors the Greek one.
 const SECTION_SHOTS: {
-  src: string;
+  file: string;
   width: number;
   height: number;
   frame: "phone" | "browser";
 }[] = [
-  { src: "/tour/store-mobile.png", width: 860, height: 1864, frame: "phone" },
-  { src: "/tour/booking-time.png", width: 393, height: 852, frame: "phone" },
-  { src: "/tour/dash-calendar.png", width: 1440, height: 900, frame: "browser" },
-  { src: "/tour/dash-qr.png", width: 1440, height: 900, frame: "browser" },
-  { src: "/tour/dash-bookings.png", width: 1440, height: 900, frame: "browser" },
-  { src: "/tour/dash-reviews.png", width: 1440, height: 900, frame: "browser" },
-  { src: "/tour/dash-reports.png", width: 1440, height: 900, frame: "browser" },
+  { file: "store-mobile.png", width: 344, height: 746, frame: "phone" },
+  { file: "booking.png", width: 343, height: 745, frame: "phone" },
+  { file: "calendar.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "appointments.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "services.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "staff.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "customers.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "qr-poster.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "reviews.png", width: 1920, height: 1080, frame: "browser" },
+  { file: "reports.png", width: 1920, height: 1080, frame: "browser" },
 ];
 
 const LOOP_ICONS = [QrCode, Clock, CalendarCheck];
@@ -160,9 +165,9 @@ export default async function DemoTourPage({
                 >
                   <Reveal className={flip ? "lg:order-2" : undefined}>
                     {shot.frame === "phone" ? (
-                      <PhoneShot src={shot.src} width={shot.width} height={shot.height} alt={s.title} />
+                      <PhoneShot src={`/tour/${locale}/${shot.file}`} width={shot.width} height={shot.height} alt={s.title} />
                     ) : (
-                      <BrowserShot src={shot.src} width={shot.width} height={shot.height} alt={s.title} />
+                      <BrowserShot src={`/tour/${locale}/${shot.file}`} width={shot.width} height={shot.height} alt={s.title} />
                     )}
                   </Reveal>
                   <Reveal delay={0.08} className={flip ? "lg:order-1" : undefined}>
@@ -214,7 +219,7 @@ export default async function DemoTourPage({
             </Reveal>
             <Reveal delay={0.08}>
               <BrowserShot
-                src="/tour/store-desktop.png"
+                src={`/tour/${locale}/store-desktop.png`}
                 width={1440}
                 height={900}
                 alt={d.retentionTitle}

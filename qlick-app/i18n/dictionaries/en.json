@@ -693,8 +693,8 @@
       { "title": "You see it instantly", "body": "The booking lands in your calendar by itself, with name and notes." }
     ],
     "sectionsEyebrow": "What you get",
-    "sectionsTitle": "A personal page for your business",
-    "sectionsSubtitle": "Clean, fast and built for mobile. Everything your customers need, plus online bookings, on one modern professional page.",
+    "sectionsTitle": "See every screen up close",
+    "sectionsSubtitle": "From your customer's public page to your calendar, services, staff, customers and reports.",
     "sections": [
       {
         "title": "Your storefront page",
@@ -712,14 +712,29 @@
         "points": ["Weekly & monthly view", "A column per staff member, color-coded", "Drag appointments to move them", "Holidays & special hours with one click"]
       },
       {
+        "title": "Every booking in one list",
+        "body": "Upcoming, past and cancelled — with search, plus import and export to Excel.",
+        "points": ["Upcoming, past & cancelled in one click", "Search by name or mobile", "Statuses: confirmed, cancelled, no-show", "Import & export to Excel"]
+      },
+      {
+        "title": "Your services, with price & duration",
+        "body": "Build your menu — exactly what customers see and book.",
+        "points": ["Price & duration per service", "Show or hide with a single switch", "Unlimited services on paid plans", "Edit the details anytime"]
+      },
+      {
+        "title": "Your staff, as calendar columns",
+        "body": "Each person with their own services, color and rating.",
+        "points": ["Their own services per person", "Color & column in the calendar", "Average rating from reviews", "Active or inactive with a switch"]
+      },
+      {
+        "title": "Customer profiles with history",
+        "body": "Every customer with visits, total spend, notes and upcoming bookings.",
+        "points": ["Visit history & total revenue", "Private notes (preferences, allergies)", "Upcoming bookings & one-click \"New appointment\"", "Search by name or phone"]
+      },
+      {
         "title": "A QR poster with your identity",
         "body": "Design the poster the way you want it and print it — that's where everything starts.",
         "points": ["Your colors, logo & text", "Print-ready PDF & PNG", "Your own link: qlick.gr/b/your-name", "We count how many scan"]
-      },
-      {
-        "title": "Appointments, staff & services",
-        "body": "The shop's day-to-day in lists you understand at a glance.",
-        "points": ["History & search across all bookings", "Statuses: completed, cancelled, no-show", "Staff with their own services & colors", "Price & duration per service"]
       },
       {
         "title": "Reviews that build your name",

@@ -255,7 +255,17 @@ export default async function LandingPage({
 
             {/* the phone */}
             <Reveal className="order-1 lg:order-2" y={48}>
-              <PhoneDemo s={dict.landing.showcase.phone} />
+              <PhoneDemo
+                s={dict.landing.showcase.phone}
+                frames={[
+                  "store",
+                  "service",
+                  "datetime",
+                  "staff",
+                  "confirm",
+                  "booked",
+                ].map((n) => `/${locale}/${n}.png`)}
+              />
             </Reveal>
 
             {/* right point */}

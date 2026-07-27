@@ -228,9 +228,9 @@ export default async function ForBusinessPage({
 
             <div className="flex justify-center lg:col-span-6 lg:justify-end lg:pr-6">
               <BrowserShot
-                src="/tour/dash-calendar.png"
-                width={1440}
-                height={900}
+                src={`/tour/${locale}/calendar.png`}
+                width={1920}
+                height={1080}
                 alt={isEl ? "Το ημερολόγιο του Qlick" : "The Qlick calendar"}
               />
             </div>
