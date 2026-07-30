@@ -747,6 +747,25 @@
         "points": ["Revenue & completed appointments", "Booking source: how much the QR brings", "Popular services & per staff member", "No-shows & cancellations"]
       }
     ],
+    "gcalTitle": "Your appointments in Google Calendar too",
+    "gcalBody": "Connect your Google Calendar once. Every new, changed or cancelled appointment goes there automatically — and the appointments you already keep in Google come into Qlick.",
+    "gcalPoints": [
+      "Automatic push on every new, changed or cancelled appointment",
+      "A separate Google calendar per staff member",
+      "Import the appointments you already have in Google",
+      "See them on your phone, wherever you are"
+    ],
+    "gcalNote": "Optional — Qlick works fully without Google Calendar. You always manage appointments inside Qlick.",
+    "gcalVisual": {
+      "source": "Qlick",
+      "target": "Google Calendar",
+      "syncLabel": "Automatic sync",
+      "events": [
+        { "time": "10:00", "title": "Haircut · George" },
+        { "time": "11:30", "title": "Beard trim · Nick" },
+        { "time": "17:15", "title": "Haircut + Beard · Steve" }
+      ]
+    },
     "extrasTitle": "And also",
     "extras": [
       { "title": "Hours with shifts", "body": "Morning-afternoon, holidays, exceptions — whatever applies to your shop." },
